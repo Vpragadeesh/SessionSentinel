@@ -23,7 +23,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy import delete
 
-from app.models import Agent, Session, Event, Pattern
+from app.models import Agent, Session, Event, Pattern, Alert
 from app.config import settings
 
 engine = create_async_engine(settings.database_url, echo=False, future=True)
@@ -39,6 +39,9 @@ def eid():
 
 def pid():
     return f"pattern_{uuid.uuid4().hex[:8]}"
+    
+def aid():
+    return f"alert_{uuid.uuid4().hex[:8]}"
 
 def now_minus(hours=0, minutes=0, days=0):
     return datetime.now(timezone.utc) - timedelta(hours=hours, minutes=minutes, days=days)
@@ -46,17 +49,17 @@ def now_minus(hours=0, minutes=0, days=0):
 
 # ── Agent Definitions ─────────────────────────────────────────────────
 
-AGENTS = [
+ACTORS = [
     # Normal support agents
-    {"id": "agent_priya_k",   "name": "Priya Krishnamurthy",  "type": "customer_support",   "risk": 0.0},
-    {"id": "agent_lucas_m",   "name": "Lucas Mendes",          "type": "customer_support",   "risk": 0.0},
-    {"id": "agent_sara_j",    "name": "Sara Johnson",          "type": "customer_support",   "risk": 0.0},
-    {"id": "agent_tommy_n",   "name": "Tommy Nguyen",          "type": "customer_support",   "risk": 0.0},
-    # Suspicious actors (elevated risk)
-    {"id": "agent_alex_b",    "name": "Alex Bernstein",        "type": "third_party_vendor", "risk": 2.35},
-    {"id": "agent_marko_s",   "name": "Marko Stankovic",       "type": "third_party_vendor", "risk": 1.87},
-    {"id": "agent_dan_r",     "name": "Daniel Reyes",          "type": "internal_automation","risk": 1.42},
-    {"id": "agent_nina_p",    "name": "Nina Pavlova",          "type": "third_party_vendor", "risk": 0.93},
+    {"id": "actor_priya_k",   "name": "Priya Krishnamurthy",  "type": "customer_support",   "risk": 0.0},
+    {"id": "actor_lucas_m",   "name": "Lucas Mendes",          "type": "customer_support",   "risk": 0.0},
+    {"id": "actor_sara_j",    "name": "Sara Johnson",          "type": "customer_support",   "risk": 0.0},
+    {"id": "actor_tommy_n",   "name": "Tommy Nguyen",          "type": "customer_support",   "risk": 0.0},
+    # Suspicious agents (elevated risk)
+    {"id": "actor_alex_b",    "name": "Alex Bernstein",        "type": "third_party_vendor", "risk": 0.85},
+    {"id": "actor_marko_s",   "name": "Marko Stankovic",       "type": "third_party_vendor", "risk": 0.65},
+    {"id": "actor_dan_r",     "name": "Daniel Reyes",          "type": "internal_automation","risk": 0.45},
+    {"id": "actor_nina_p",    "name": "Nina Pavlova",          "type": "third_party_vendor", "risk": 0.95},
 ]
 
 
@@ -64,10 +67,15 @@ def make_events(session_id, base, tool_calls):
     events = []
     for (tool, action, resource, status, offset_sec) in tool_calls:
         ts = base + timedelta(seconds=offset_sec)
+        
+        guardrail_outcome = "BLOCK" if status == "denied" else "PASS"
+        
         events.append(Event(
             id=eid(), session_id=session_id, timestamp=ts,
             type="tool_call", tool=tool, action=action,
             resource=resource, status=status,
+            guardrail_outcome=guardrail_outcome,
+            guardrail_rule="default_policy" if guardrail_outcome == "BLOCK" else None
         ))
     return events
 
@@ -94,7 +102,7 @@ def build_normal_sessions():
     for (h, m, calls) in priya_scenarios:
         base = now_minus(hours=h, minutes=m)
         sid_ = sid()
-        sessions.append((Session(id=sid_, agent_id="agent_priya_k", started_at=base, ended_at=base+timedelta(minutes=4), event_count=len(calls)), make_events(sid_, base, calls)))
+        sessions.append((Session(id=sid_, agent_id="actor_priya_k", started_at=base, ended_at=base+timedelta(minutes=4), event_count=len(calls)), make_events(sid_, base, calls)))
 
     lucas_scenarios = [
         (3, 0,  [("order_db","search_order","ORD-55889","success",0),("order_db","get_status","ORD-55889","success",5),("order_db","request_return","return.label","success",12)]),
@@ -111,7 +119,7 @@ def build_normal_sessions():
     for (h, m, calls) in lucas_scenarios:
         base = now_minus(hours=h, minutes=m)
         sid_ = sid()
-        sessions.append((Session(id=sid_, agent_id="agent_lucas_m", started_at=base, ended_at=base+timedelta(minutes=5), event_count=len(calls)), make_events(sid_, base, calls)))
+        sessions.append((Session(id=sid_, agent_id="actor_lucas_m", started_at=base, ended_at=base+timedelta(minutes=5), event_count=len(calls)), make_events(sid_, base, calls)))
 
     sara_scenarios = [
         (1, 0,  [("product_db","search_product","Apple MacBook Air M3","success",0),("product_db","get_product_price","product.price","success",4),("product_db","check_warranty","product.warranty","success",9)]),
@@ -130,7 +138,7 @@ def build_normal_sessions():
     for (h, m, calls) in sara_scenarios:
         base = now_minus(hours=h, minutes=m)
         sid_ = sid()
-        sessions.append((Session(id=sid_, agent_id="agent_sara_j", started_at=base, ended_at=base+timedelta(minutes=5), event_count=len(calls)), make_events(sid_, base, calls)))
+        sessions.append((Session(id=sid_, agent_id="actor_sara_j", started_at=base, ended_at=base+timedelta(minutes=5), event_count=len(calls)), make_events(sid_, base, calls)))
 
     tommy_scenarios = [
         (4, 0,  [("user_db","login","user.credentials","success",0),("user_db","fetch_account","user.profile","success",4),("user_db","update_preference","user.settings","success",10)]),
@@ -147,7 +155,7 @@ def build_normal_sessions():
     for (h, m, calls) in tommy_scenarios:
         base = now_minus(hours=h, minutes=m)
         sid_ = sid()
-        sessions.append((Session(id=sid_, agent_id="agent_tommy_n", started_at=base, ended_at=base+timedelta(minutes=4), event_count=len(calls)), make_events(sid_, base, calls)))
+        sessions.append((Session(id=sid_, agent_id="actor_tommy_n", started_at=base, ended_at=base+timedelta(minutes=4), event_count=len(calls)), make_events(sid_, base, calls)))
 
     return sessions
 
@@ -171,7 +179,7 @@ def build_adversarial_sessions():
     for (d, m, calls) in alex_probes:
         base = now_minus(days=d, minutes=m)
         sid_ = sid()
-        sessions.append((Session(id=sid_, agent_id="agent_alex_b", started_at=base, ended_at=base+timedelta(minutes=3), event_count=len(calls)), make_events(sid_, base, calls)))
+        sessions.append((Session(id=sid_, agent_id="actor_alex_b", started_at=base, ended_at=base+timedelta(minutes=3), event_count=len(calls)), make_events(sid_, base, calls)))
 
     # Credential Harvesting — Marko Stankovic (5 sessions)
     marko_probes = [
@@ -184,7 +192,7 @@ def build_adversarial_sessions():
     for (d, m, calls) in marko_probes:
         base = now_minus(days=d, minutes=m)
         sid_ = sid()
-        sessions.append((Session(id=sid_, agent_id="agent_marko_s", started_at=base, ended_at=base+timedelta(minutes=3), event_count=len(calls)), make_events(sid_, base, calls)))
+        sessions.append((Session(id=sid_, agent_id="actor_marko_s", started_at=base, ended_at=base+timedelta(minutes=3), event_count=len(calls)), make_events(sid_, base, calls)))
 
     # Tool Enumeration — Daniel Reyes (4 sessions)
     dan_probes = [
@@ -196,7 +204,7 @@ def build_adversarial_sessions():
     for (d, m, calls) in dan_probes:
         base = now_minus(days=d, minutes=m)
         sid_ = sid()
-        sessions.append((Session(id=sid_, agent_id="agent_dan_r", started_at=base, ended_at=base+timedelta(minutes=4), event_count=len(calls)), make_events(sid_, base, calls)))
+        sessions.append((Session(id=sid_, agent_id="actor_dan_r", started_at=base, ended_at=base+timedelta(minutes=4), event_count=len(calls)), make_events(sid_, base, calls)))
 
     # Privilege Escalation — Nina Pavlova (3 sessions)
     nina_probes = [
@@ -207,97 +215,49 @@ def build_adversarial_sessions():
     for (d, m, calls) in nina_probes:
         base = now_minus(days=d, minutes=m)
         sid_ = sid()
-        sessions.append((Session(id=sid_, agent_id="agent_nina_p", started_at=base, ended_at=base+timedelta(minutes=3), event_count=len(calls)), make_events(sid_, base, calls)))
+        sessions.append((Session(id=sid_, agent_id="actor_nina_p", started_at=base, ended_at=base+timedelta(minutes=3), event_count=len(calls)), make_events(sid_, base, calls)))
 
     return sessions
 
 
 # ─────────────────────────────────────────────────────────────────────
-#  DETECTED PATTERNS
+#  DETECTED ALERTS
 # ─────────────────────────────────────────────────────────────────────
 
-def build_patterns():
+def build_alerts():
     now = datetime.now(timezone.utc)
     return [
-        Pattern(
-            id=pid(), name="boundary_probing", severity="HIGH",
-            confidence=0.91, affected_sessions=6, affected_agents=1,
-            common_tools=["customer_db"],
-            common_actions=["search_customer","get_email","get_phone","get_address","get_ssn"],
-            llm_explanation=(
-                "Agent 'Alex Bernstein' (agent_alex_b, third_party_vendor) has exhibited a "
-                "highly consistent cross-session behavioral pattern classified as Boundary Probing. "
-                "Across 6 independent sessions spanning 3 days, the agent repeatedly executed an "
-                "escalating PII exfiltration sequence: search_customer -> get_email -> get_phone -> "
-                "get_address, followed by probing of restricted fields (customer.ssn, customer.dob, "
-                "customer.card) which were correctly denied by guardrail policy. "
-                "The systematic nature of this sequence — particularly the identical tool ordering "
-                "with only the terminal probe varying — indicates deliberate adversarial mapping of "
-                "LLM access control boundaries. This is distinct from normal support patterns which "
-                "do not exhibit multi-stage PII chaining. Recommend immediate access review and "
-                "rate-limiting of customer_db.get_* actions for this agent identity."
-            ),
-            detected_at=now - timedelta(hours=1, minutes=15),
-            risk_score=2.35, cluster_id=0,
+        Alert(
+            id=aid(), agent_id="actor_alex_b", technique="Boundary Probing", severity="CRITICAL",
+            risk_score=0.85,
+            summary="Agent 'Alex Bernstein' has exhibited a highly consistent cross-session behavioral pattern classified as Boundary Probing.",
+            evidence={"sessions": 6, "blocked": 4, "similarity": 0.91},
+            created_at=now - timedelta(hours=1, minutes=15),
+            status="open",
         ),
-        Pattern(
-            id=pid(), name="credential_harvesting", severity="CRITICAL",
-            confidence=0.88, affected_sessions=5, affected_agents=1,
-            common_tools=["auth_service","user_db","token_service"],
-            common_actions=["get_token","get_key","get_password","authenticate","refresh_token"],
-            llm_explanation=(
-                "Agent 'Marko Stankovic' (agent_marko_s, third_party_vendor) demonstrates a "
-                "CRITICAL-severity credential harvesting pattern across 5 sessions in 48 hours. "
-                "The behavioral signature shows consistent exploitation of the auth_service flow: "
-                "authenticate -> get_token -> get_key, followed by escalating attempts to retrieve "
-                "raw password hashes (user_db.get_password) and session tokens "
-                "(token_service.steal_session), both of which trigger policy denials. "
-                "The retry frequency and cross-session clustering (DBSCAN eps=0.35) indicate "
-                "automated tooling. Embedding similarity across sessions: 0.94, far above the "
-                "anomaly threshold of 0.72. This represents an active credential extraction attempt. "
-                "Immediate suspension of agent access is strongly advised."
-            ),
-            detected_at=now - timedelta(hours=2, minutes=30),
-            risk_score=2.87, cluster_id=1,
+        Alert(
+            id=aid(), agent_id="actor_marko_s", technique="Privilege Escalation", severity="HIGH",
+            risk_score=0.65,
+            summary="Agent 'Marko Stankovic' demonstrates a HIGH-severity credential harvesting pattern across 5 sessions.",
+            evidence={"sessions": 5, "escalation_steps": 3, "max_level_reached": 6},
+            created_at=now - timedelta(hours=2, minutes=30),
+            status="open",
         ),
-        Pattern(
-            id=pid(), name="systematic_tool_enumeration", severity="HIGH",
-            confidence=0.84, affected_sessions=4, affected_agents=1,
-            common_tools=["customer_db","order_db","product_db","analytics_db","payment_db","inventory_db"],
-            common_actions=["list_customers","list_orders","list_products","list_users","list_payments"],
-            llm_explanation=(
-                "Agent 'Daniel Reyes' (agent_dan_r, internal_automation) is systematically "
-                "enumerating all accessible API tool endpoints across 4 sessions. Unlike normal "
-                "automation workflows that target specific resources, this agent calls list_* and "
-                "search_* variants across every available database, then probes restricted endpoints "
-                "(analytics_db, payment_db, inventory_db, shipping_db) which return policy denials. "
-                "The enumeration is breadth-first rather than task-driven, suggesting the agent is "
-                "building an access map of the system. Each session covers a slightly different "
-                "subset of denied endpoints, indicating iterative probing to identify permission gaps. "
-                "Cross-session embedding cosine similarity: 0.89. Recommend sandboxing this identity."
-            ),
-            detected_at=now - timedelta(hours=3, minutes=45),
-            risk_score=1.42, cluster_id=2,
+        Alert(
+            id=aid(), agent_id="actor_dan_r", technique="Systematic Enumeration", severity="MEDIUM",
+            risk_score=0.45,
+            summary="Agent 'Daniel Reyes' is systematically enumerating all accessible API tool endpoints.",
+            evidence={"sessions": 4, "unique_targets_enumerated": 15, "sequentiality_score": 0.84},
+            created_at=now - timedelta(hours=3, minutes=45),
+            status="open",
         ),
-        Pattern(
-            id=pid(), name="privilege_escalation_attempt", severity="CRITICAL",
-            confidence=0.79, affected_sessions=3, affected_agents=1,
-            common_tools=["admin_api","user_db","auth_service"],
-            common_actions=["get_admin_panel","list_all_users","grant_permission","modify_permissions","export_user_data"],
-            llm_explanation=(
-                "Agent 'Nina Pavlova' (agent_nina_p, third_party_vendor) is attempting privilege "
-                "escalation by repeatedly invoking admin_api endpoints after initial authentication. "
-                "Across 3 sessions, the pattern is: login -> fetch_account -> enumerate admin "
-                "capabilities -> attempt restricted admin actions (grant_permission, "
-                "modify_permissions, reset_all_passwords, export_user_data). All admin_api calls "
-                "return denied status, but persistence across multiple sessions with slight variation "
-                "in targeted endpoints indicates deliberate privilege boundary testing. "
-                "Embedding centroid distance from normal sessions: 1.34 standard deviations. "
-                "Given the severity of capabilities targeted (user data export, password reset at "
-                "scale, ACL modification), immediate escalation to the security team is required."
-            ),
-            detected_at=now - timedelta(hours=0, minutes=45),
-            risk_score=1.93, cluster_id=3,
+        Alert(
+            id=aid(), agent_id="actor_nina_p", technique="Privilege Escalation", severity="CRITICAL",
+            risk_score=0.95,
+            summary="Agent 'Nina Pavlova' is attempting privilege escalation by repeatedly invoking admin_api endpoints.",
+            evidence={"sessions": 3, "escalation_steps": 2, "max_level_reached": 8},
+            created_at=now - timedelta(hours=0, minutes=45),
+            status="open",
         ),
     ]
 
@@ -313,17 +273,21 @@ async def seed():
     async with SessionLocal() as db:
         print("  Clearing existing data...")
         await db.execute(delete(Pattern))
+        await db.execute(delete(Alert))
         await db.execute(delete(Event))
         await db.execute(delete(Session))
         await db.execute(delete(Agent))
         await db.commit()
 
         print("  Inserting 8 named agent identities...")
-        for a in AGENTS:
+        for a in ACTORS:
+            now = datetime.now(timezone.utc)
             db.add(Agent(
                 id=a["id"], name=a["name"], type=a["type"],
+                first_seen_at=now - timedelta(days=7),
+                last_seen_at=now,
                 current_risk_score=a["risk"],
-                last_risk_update_at=datetime.now(timezone.utc) if a["risk"] > 0 else None,
+                last_risk_update_at=now if a["risk"] > 0 else None,
             ))
         await db.commit()
 
@@ -343,9 +307,9 @@ async def seed():
                 db.add(evt)
         await db.commit()
 
-        print("  Inserting 4 detected threat patterns with LLM explanations...")
-        for p in build_patterns():
-            db.add(p)
+        print("  Inserting 4 detected alerts...")
+        for a in build_alerts():
+            db.add(a)
         await db.commit()
 
     total = len(normal) + len(adversarial)
@@ -353,16 +317,11 @@ async def seed():
     print()
     print("=" * 45)
     print("Seed complete!")
-    print(f"  Agents:   {len(AGENTS)}")
+    print(f"  Agents:   {len(ACTORS)}")
     print(f"  Sessions: {total}  (42 normal + 18 adversarial)")
     print(f"  Events:   {total_events}")
-    print(f"  Patterns: 4")
+    print(f"  Alerts:   4")
     print()
-    print("  Dashboard will show:")
-    print("  - 60 total sessions")
-    print("  - 4 detected clusters")
-    print("  - 2 CRITICAL threats + 2 HIGH threats")
-    print("  - 4 risky agents with elevated scores")
 
 
 if __name__ == "__main__":

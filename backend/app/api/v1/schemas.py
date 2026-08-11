@@ -1,21 +1,26 @@
 from pydantic import BaseModel
 from datetime import datetime
-from typing import Optional, List, Any
+from typing import Optional, List, Any, Dict
 from uuid import UUID
 
 
-class AgentBase(BaseModel):
+class ActorBase(BaseModel):
     name: str
     type: str
 
 
-class AgentCreate(AgentBase):
+class ActorCreate(ActorBase):
     pass
 
 
-class AgentResponse(AgentBase):
+class ActorResponse(ActorBase):
     id: str
     created_at: datetime
+    first_seen_at: datetime
+    last_seen_at: datetime
+    status: str
+    current_risk_score: float
+    last_risk_update_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -58,6 +63,10 @@ class EventBase(BaseModel):
     action: Optional[str] = None
     resource: Optional[str] = None
     status: str
+    guardrail_outcome: Optional[str] = None
+    guardrail_rule: Optional[str] = None
+    input_hash: Optional[str] = None
+    metadata_json: Optional[Any] = None
 
 
 class EventCreate(EventBase):
@@ -91,6 +100,28 @@ class PatternCreate(PatternBase):
 class PatternResponse(PatternBase):
     id: str
     detected_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class AlertBase(BaseModel):
+    agent_id: str
+    technique: str
+    severity: str
+    risk_score: float
+    summary: str
+    evidence: Optional[Any] = None
+    status: str
+
+
+class AlertCreate(AlertBase):
+    pass
+
+
+class AlertResponse(AlertBase):
+    id: str
+    created_at: datetime
 
     class Config:
         from_attributes = True

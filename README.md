@@ -75,7 +75,7 @@ To demonstrate the full power of the cross-session correlation engine:
 4. **Investigate the Threats:**
    The dashboard will instantly update to show 4 newly detected adversarial patterns (e.g., *Progressive Data Probing* and *Credential Harvesting*).
 5. **View Agent Risk Profiles:**
-   Navigate to the **Risky Agents** page to see the accumulating risk scores assigned to the attackers, demonstrating how cross-session tracking isolates bad actors.
+   Navigate to the **Risky Agents** page to see the accumulating risk scores assigned to the attackers, demonstrating how cross-session tracking isolates bad agents.
 
 ---
 
