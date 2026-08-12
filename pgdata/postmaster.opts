@@ -1,0 +1,1 @@
+/usr/bin/postgres "-D" "/home/pragadeesh/aivar/SessionSentinel/pgdata" "-p" "5432" "-k" "/home/pragadeesh/aivar/SessionSentinel/pgrun"

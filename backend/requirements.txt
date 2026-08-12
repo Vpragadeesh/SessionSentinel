@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+sqlalchemy[asyncio]
+asyncpg
+alembic
+pydantic
+pydantic-settings
+sentence-transformers
+scikit-learn
+numpy
+groq
+httpx
+python-dotenv
