@@ -1,7 +1,6 @@
 import axios from 'axios';
 
 // API Configuration
-// Vite proxies /api to http://localhost:8000
 const apiClient = axios.create({
   baseURL: '/api/v1',
   headers: {
@@ -31,13 +30,30 @@ export interface Pattern {
   cluster_id: number | null;
 }
 
-export interface AgentRisk {
+export interface Alert {
+  id: string;
+  agent_id: string;
+  technique: string;
+  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+  risk_score: number;
+  summary: string;
+  evidence: any;
+  created_at: string;
+  status: string;
+}
+
+export interface ActorRisk {
   id: string;
   name: string;
   type: string;
   current_risk_score: number;
   last_risk_update_at: string | null;
+  first_seen_at?: string;
+  last_seen_at?: string;
+  status?: string;
 }
+
+export interface Agent extends ActorRisk {}
 
 export interface EventItem {
   id: string;
@@ -48,6 +64,8 @@ export interface EventItem {
   action?: string;
   resource?: string;
   status: string;
+  guardrail_outcome?: string;
+  guardrail_rule?: string;
 }
 
 export interface SessionItem {
@@ -74,28 +92,34 @@ export const api = {
     return res.data;
   },
 
-  getPatterns: async (limit: number = 100): Promise<Pattern[]> => {
-    const res = await apiClient.get<Pattern[]>(`/patterns?limit=${limit}`);
+  getAlerts: async (status?: string): Promise<Alert[]> => {
+    const url = status ? `/alerts?status=${status}` : '/alerts';
+    const res = await apiClient.get<Alert[]>(url);
     return res.data;
   },
 
-  getPattern: async (id: string): Promise<Pattern> => {
-    const res = await apiClient.get<Pattern>(`/patterns/${id}`);
-    return res.data;
-  },
-
-  explainPattern: async (id: string): Promise<ExplainResponse> => {
-    const res = await apiClient.post<ExplainResponse>(`/patterns/${id}/explain`);
-    return res.data;
-  },
-
-  getLLMStatus: async (): Promise<{ status: string; primary_provider: string }> => {
-    const res = await apiClient.get('/patterns/llm/status');
-    return res.data;
-  },
-
-  getTopRiskyAgents: async (): Promise<AgentRisk[]> => {
+  getTopRiskyAgents: async (): Promise<ActorRisk[]> => {
     const res = await apiClient.get('/agents/top-risk');
+    return res.data;
+  },
+  
+  getAgents: async (): Promise<Agent[]> => {
+    const res = await apiClient.get('/agents');
+    return res.data;
+  },
+
+  getAgent: async (id: string): Promise<Agent> => {
+    const res = await apiClient.get(`/agents/${id}`);
+    return res.data;
+  },
+
+  getAgentSessions: async (id: string): Promise<SessionItem[]> => {
+    const res = await apiClient.get(`/agents/${id}/sessions`);
+    return res.data;
+  },
+
+  getAgentAlerts: async (id: string): Promise<Alert[]> => {
+    const res = await apiClient.get(`/agents/${id}/alerts`);
     return res.data;
   },
 
@@ -109,7 +133,7 @@ export const api = {
     return res.data;
   },
 
-  runAnalysis: async (): Promise<{ message: string; patterns_detected: number }> => {
+  runAnalysis: async (): Promise<{ message: string; alerts_processed: number }> => {
     const res = await apiClient.post('/analysis/run');
     return res.data;
   },
@@ -124,8 +148,23 @@ export const api = {
     return res.data;
   },
 
+  getPatterns: async (limit: number = 100): Promise<Pattern[]> => {
+    const res = await apiClient.get<Pattern[]>(`/patterns?limit=${limit}`);
+    return res.data;
+  },
+
+  getPattern: async (id: string): Promise<Pattern> => {
+    const res = await apiClient.get<Pattern>(`/patterns/${id}`);
+    return res.data;
+  },
+
+  explainPattern: async (id: string): Promise<ExplainResponse> => {
+    const res = await apiClient.post<ExplainResponse>(`/analysis/patterns/${id}/explain`);
+    return res.data;
+  },
+
   streamChatMessage: async (
-    sessionId: string, 
+    sessionId: string,
     messages: { role: string; content: string | null; tool_calls?: any[] }[],
     provider: string,
     onChunk: (type: string, data: any) => void
@@ -138,33 +177,24 @@ export const api = {
       body: JSON.stringify({ session_id: sessionId, messages, provider }),
     });
 
-    if (!response.body) {
-      throw new Error('No response body');
-    }
-
+    if (!response.body) throw new Error('No body returned from stream');
     const reader = response.body.getReader();
     const decoder = new TextDecoder('utf-8');
 
     while (true) {
-      const { done, value } = await reader.read();
+      const { value, done } = await reader.read();
       if (done) break;
-
       const chunk = decoder.decode(value, { stream: true });
       const lines = chunk.split('\n');
-      
       for (const line of lines) {
         if (line.startsWith('data: ')) {
           try {
-            const dataStr = line.substring(6).trim();
-            if (dataStr === '[DONE]') continue;
-            
-            const data = JSON.parse(dataStr);
-            onChunk(data.type, data);
-          } catch (e) {
-            console.error('Failed to parse SSE chunk:', line, e);
-          }
+            const parsed = JSON.parse(line.slice(6));
+            onChunk(parsed.type, parsed.data);
+          } catch (e) {}
         }
       }
     }
   }
+
 };

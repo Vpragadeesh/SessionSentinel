@@ -3,6 +3,7 @@ import { AppShell } from './components/AppShell';
 import { Dashboard } from './pages/Dashboard';
 import { ThreatsPage } from './pages/ThreatsPage';
 import { AgentsPage } from './pages/AgentsPage';
+import { AlertsPage } from './pages/AlertsPage';
 import { PatternDetail } from './pages/PatternDetail';
 import { ChatSimulator } from './pages/ChatSimulator';
 import { SessionExplorer } from './pages/SessionExplorer';
@@ -17,6 +18,7 @@ function App() {
             <Route path="/"          element={<Dashboard />} />
             <Route path="/threats"   element={<ThreatsPage />} />
             <Route path="/agents"    element={<AgentsPage />} />
+            <Route path="/alerts"    element={<AlertsPage />} />
             <Route path="/sessions"  element={<SessionExplorer />} />
             <Route path="/chat"      element={<ChatSimulator />} />
             <Route path="/pattern/:id" element={<PatternDetail />} />

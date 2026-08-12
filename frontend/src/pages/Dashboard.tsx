@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
-import type { DashboardStats, Pattern } from '../api/client';
+import type { DashboardStats, Pattern, Alert } from '../api/client';
 import {
   Activity,
   ShieldAlert,
@@ -37,6 +37,7 @@ const getBadgeClass = (s: string) => {
 export const Dashboard: React.FC = () => {
   const [stats, setStats]       = useState<DashboardStats | null>(null);
   const [patterns, setPatterns] = useState<Pattern[]>([]);
+  const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading]   = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
   const [injecting, setInjecting] = useState(false);
@@ -46,9 +47,10 @@ export const Dashboard: React.FC = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [s, p] = await Promise.all([api.getStats(), api.getPatterns()]);
+      const [s, p, a] = await Promise.all([api.getStats(), api.getPatterns(), api.getAlerts()]);
       setStats(s);
       setPatterns(p);
+      setAlerts(a);
     } catch (e) {
       console.error(e);
     } finally {
@@ -159,12 +161,12 @@ export const Dashboard: React.FC = () => {
               </div>
               <div
                 className="stat-value"
-                style={{ color: (stats?.high_risk_count ?? 0) > 0 ? 'var(--status-critical)' : 'var(--text-primary)' }}
+                style={{ color: alerts.length > 0 ? 'var(--status-critical)' : 'var(--text-primary)' }}
               >
-                {stats?.high_risk_count ?? 0}
+                {alerts.length}
               </div>
               <div className="stat-sub">
-                {(stats?.high_risk_count ?? 0) > 0 ? 'Requires immediate attention' : 'No high-severity threats'}
+                {alerts.length > 0 ? 'Requires immediate attention' : 'No active alerts'}
               </div>
             </div>
           </div>
@@ -178,7 +180,7 @@ export const Dashboard: React.FC = () => {
               <div style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-primary)' }}>
                 {postureLabel === 'NORMAL'
                   ? 'All sessions within normal behavioral variance.'
-                  : `${patterns.length} adversarial cluster${patterns.length !== 1 ? 's' : ''} detected across ${stats?.total_sessions ?? 0} sessions.`}
+                  : `${patterns.length} adversarial clusters and ${alerts.length} alerts detected.`}
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -186,9 +188,9 @@ export const Dashboard: React.FC = () => {
                 <span className={`pulse-dot ${postureLabel !== 'NORMAL' ? 'danger' : ''}`} />
                 {postureLabel}
               </span>
-              {patterns.length > 0 && (
-                <Link to="/threats" className="btn btn-sm">
-                  View Threats <ChevronRight size={13} />
+              {(patterns.length > 0 || alerts.length > 0) && (
+                <Link to="/alerts" className="btn btn-sm">
+                  View Alerts <ChevronRight size={13} />
                 </Link>
               )}
             </div>

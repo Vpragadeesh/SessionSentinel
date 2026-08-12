@@ -70,10 +70,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ patterns }) => {
         />
 
         <NavItem
-          to="/threats"
+          to="/alerts"
           icon={<AlertTriangle size={16} />}
-          label="Threats"
-          badge={patterns.length}
+          label="Active Alerts"
+          badge={patterns.length} 
         />
 
         <NavItem

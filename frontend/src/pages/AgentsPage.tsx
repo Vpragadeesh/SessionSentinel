@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../api/client';
-import type { AgentRisk } from '../api/client';
+import type { ActorRisk } from '../api/client';
 import { RefreshCw, Users, Clock, UserX } from 'lucide-react';
 import { SystemHealthCard } from '../components/SystemHealthCard';
 
@@ -10,12 +10,12 @@ const riskColor = (score: number) =>
   'var(--status-medium)';
 
 export const AgentsPage: React.FC = () => {
-  const [agents, setAgents] = useState<AgentRisk[]>([]);
+  const [agents, setActors] = useState<ActorRisk[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchData = async () => {
     setLoading(true);
-    try { setAgents(await api.getTopRiskyAgents()); }
+    try { setActors(await api.getTopRiskyAgents()); }
     catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
@@ -48,7 +48,7 @@ export const AgentsPage: React.FC = () => {
               <div>
                 <div className="section-title">Flagged Agent Identities</div>
                 <div className="section-subtitle">
-                  Risk auto-resets to baseline after 24 hours of inactivity
+                  Risk auto-decays exponentially over 14 hours
                 </div>
               </div>
               {agents.length > 0 && (
@@ -81,7 +81,7 @@ export const AgentsPage: React.FC = () => {
                       <th>Name</th>
                       <th>Type</th>
                       <th>Risk Score</th>
-                      <th>Decay Window</th>
+                      <th>Decay Profile</th>
                       <th>Last Active</th>
                     </tr>
                   </thead>
@@ -131,7 +131,7 @@ export const AgentsPage: React.FC = () => {
                           </td>
                           <td>
                             <span className="flex items-center gap-1" style={{ fontSize: '0.75rem', color: 'var(--accent-green)' }}>
-                              <Clock size={11} /> 24h active
+                              <Clock size={11} /> exp(-0.05t)
                             </span>
                           </td>
                           <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
