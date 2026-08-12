@@ -8,7 +8,7 @@ import logging
 from app.services.llm.base import LLMProvider
 from app.services.llm.groq import GroqProvider
 from app.services.llm.nvidia_nim import NVIDIANIMProvider
-from typing import Dict, Any
+from typing import Dict, Any, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +77,7 @@ def _auto_explain(pattern_data: Dict[str, Any]) -> str:
 
 
 # Singleton
-_llm_service: LLMService | None = None
+_llm_service: Optional[LLMService] = None
 
 
 def get_llm_service() -> LLMService:
