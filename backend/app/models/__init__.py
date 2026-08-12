@@ -9,7 +9,7 @@ Base = declarative_base()
 class Agent(Base):
     __tablename__ = "agents"
 
-    id = Column(String, primary_key=True, default=lambda: f"actor_{uuid.uuid4().hex[:8]}")
+    id = Column(String, primary_key=True, default=lambda: f"agent_{uuid.uuid4().hex[:8]}")
     name = Column(String(255), nullable=False)
     type = Column(String(100), nullable=False)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)

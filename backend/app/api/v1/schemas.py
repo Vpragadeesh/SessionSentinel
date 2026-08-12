@@ -4,16 +4,16 @@ from typing import Optional, List, Any, Dict
 from uuid import UUID
 
 
-class ActorBase(BaseModel):
+class AgentBase(BaseModel):
     name: str
     type: str
 
 
-class ActorCreate(ActorBase):
+class AgentCreate(AgentBase):
     pass
 
 
-class ActorResponse(ActorBase):
+class AgentResponse(AgentBase):
     id: str
     created_at: datetime
     first_seen_at: datetime

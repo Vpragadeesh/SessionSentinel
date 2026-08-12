@@ -3,13 +3,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.db.database import get_db
 from app.models import Agent, Session, Alert
-from app.api.v1.schemas import ActorCreate, ActorResponse, SessionResponse, AlertResponse
+from app.api.v1.schemas import AgentCreate, AgentResponse, SessionResponse, AlertResponse
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime, timezone, timedelta
 from app.config import settings
 
-class ActorRiskResponse(BaseModel):
+class AgentRiskResponse(BaseModel):
     id: str
     name: str
     type: str
@@ -23,17 +23,17 @@ class ActorRiskResponse(BaseModel):
 router = APIRouter(prefix="/agents", tags=["agents"])
 
 
-@router.post("", response_model=ActorResponse, status_code=status.HTTP_201_CREATED)
-async def create_actor(agent: ActorCreate, db: AsyncSession = Depends(get_db)):
-    db_actor = Agent(**agent.model_dump())
-    db.add(db_actor)
+@router.post("", response_model=AgentResponse, status_code=status.HTTP_201_CREATED)
+async def create_agent(agent: AgentCreate, db: AsyncSession = Depends(get_db)):
+    db_agent = Agent(**agent.model_dump())
+    db.add(db_agent)
     await db.commit()
-    await db.refresh(db_actor)
-    return db_actor
+    await db.refresh(db_agent)
+    return db_agent
 
 
-@router.get("", response_model=list[ActorResponse])
-async def list_actors(
+@router.get("", response_model=list[AgentResponse])
+async def list_agents(
     skip: int = 0,
     limit: int = 100,
     db: AsyncSession = Depends(get_db)
@@ -44,8 +44,8 @@ async def list_actors(
     return result.scalars().all()
 
 
-@router.get("/top-risk", response_model=list[ActorRiskResponse])
-async def list_top_risk_actors(
+@router.get("/top-risk", response_model=list[AgentRiskResponse])
+async def list_top_risk_agents(
     limit: int = 10,
     db: AsyncSession = Depends(get_db)
 ):
@@ -60,7 +60,7 @@ async def list_top_risk_actors(
     now = datetime.now(timezone.utc)
     reset_td = timedelta(hours=settings.agent_inactivity_reset_hours)
     
-    active_risky_actors = []
+    active_risky_agents = []
     for agent in agents:
         if agent.last_risk_update_at:
             last_update = agent.last_risk_update_at
@@ -70,13 +70,13 @@ async def list_top_risk_actors(
             if now - last_update > reset_td:
                 continue
         
-        active_risky_actors.append(agent)
+        active_risky_agents.append(agent)
         
-    return active_risky_actors
+    return active_risky_agents
 
 
-@router.get("/{agent_id}", response_model=ActorResponse)
-async def get_actor(agent_id: str, db: AsyncSession = Depends(get_db)):
+@router.get("/{agent_id}", response_model=AgentResponse)
+async def get_agent(agent_id: str, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Agent).where(Agent.id == agent_id))
     agent = result.scalar_one_or_none()
     if not agent:
@@ -85,7 +85,7 @@ async def get_actor(agent_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/{agent_id}/sessions", response_model=list[SessionResponse])
-async def get_actor_sessions(agent_id: str, skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)):
+async def get_agent_sessions(agent_id: str, skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         select(Session)
         .where(Session.agent_id == agent_id)
@@ -97,7 +97,7 @@ async def get_actor_sessions(agent_id: str, skip: int = 0, limit: int = 100, db:
 
 
 @router.get("/{agent_id}/alerts", response_model=list[AlertResponse])
-async def get_actor_alerts(agent_id: str, db: AsyncSession = Depends(get_db)):
+async def get_agent_alerts(agent_id: str, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         select(Alert)
         .where(Alert.agent_id == agent_id)

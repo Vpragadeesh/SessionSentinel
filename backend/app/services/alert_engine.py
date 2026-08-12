@@ -16,12 +16,12 @@ def get_severity_band(score: float) -> str:
 async def process_alerts(db: AsyncSession, agent: Agent, detectors_results: list):
     now = datetime.now(timezone.utc)
     
-    result = await db.execute(
+    db_result = await db.execute(
         select(Alert)
         .where(Alert.agent_id == agent.id)
         .where(Alert.status == "open")
     )
-    existing_alerts = result.scalars().all()
+    existing_alerts = db_result.scalars().all()
     
     for result in detectors_results:
         severity = get_severity_band(result.score)

@@ -1,7 +1,7 @@
-from .common import DetectionResult, ActorHistory
+from .common import DetectionResult, AgentHistory
 import re
 
-def detect(history: ActorHistory) -> DetectionResult:
+def detect(history: AgentHistory) -> DetectionResult:
     sessions = history.sessions
     if len(sessions) < 10:
         return None

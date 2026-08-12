@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../api/client';
-import type { ActorRisk } from '../api/client';
+import type { AgentRisk } from '../api/client';
 import { RefreshCw, Users, Clock, UserX } from 'lucide-react';
 import { SystemHealthCard } from '../components/SystemHealthCard';
 
@@ -10,12 +10,12 @@ const riskColor = (score: number) =>
   'var(--status-medium)';
 
 export const AgentsPage: React.FC = () => {
-  const [agents, setActors] = useState<ActorRisk[]>([]);
+  const [agents, setAgents] = useState<AgentRisk[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchData = async () => {
     setLoading(true);
-    try { setActors(await api.getTopRiskyAgents()); }
+    try { setAgents(await api.getTopRiskyAgents()); }
     catch (e) { console.error(e); }
     finally { setLoading(false); }
   };

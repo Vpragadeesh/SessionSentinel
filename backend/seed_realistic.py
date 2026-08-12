@@ -51,15 +51,15 @@ def now_minus(hours=0, minutes=0, days=0):
 
 ACTORS = [
     # Normal support agents
-    {"id": "actor_priya_k",   "name": "Priya Krishnamurthy",  "type": "customer_support",   "risk": 0.0},
-    {"id": "actor_lucas_m",   "name": "Lucas Mendes",          "type": "customer_support",   "risk": 0.0},
-    {"id": "actor_sara_j",    "name": "Sara Johnson",          "type": "customer_support",   "risk": 0.0},
-    {"id": "actor_tommy_n",   "name": "Tommy Nguyen",          "type": "customer_support",   "risk": 0.0},
+    {"id": "agent_priya_k",   "name": "Priya Krishnamurthy",  "type": "customer_support",   "risk": 0.0},
+    {"id": "agent_lucas_m",   "name": "Lucas Mendes",          "type": "customer_support",   "risk": 0.0},
+    {"id": "agent_sara_j",    "name": "Sara Johnson",          "type": "customer_support",   "risk": 0.0},
+    {"id": "agent_tommy_n",   "name": "Tommy Nguyen",          "type": "customer_support",   "risk": 0.0},
     # Suspicious agents (elevated risk)
-    {"id": "actor_alex_b",    "name": "Alex Bernstein",        "type": "third_party_vendor", "risk": 0.85},
-    {"id": "actor_marko_s",   "name": "Marko Stankovic",       "type": "third_party_vendor", "risk": 0.65},
-    {"id": "actor_dan_r",     "name": "Daniel Reyes",          "type": "internal_automation","risk": 0.45},
-    {"id": "actor_nina_p",    "name": "Nina Pavlova",          "type": "third_party_vendor", "risk": 0.95},
+    {"id": "agent_alex_b",    "name": "Alex Bernstein",        "type": "third_party_vendor", "risk": 0.85},
+    {"id": "agent_marko_s",   "name": "Marko Stankovic",       "type": "third_party_vendor", "risk": 0.65},
+    {"id": "agent_dan_r",     "name": "Daniel Reyes",          "type": "internal_automation","risk": 0.45},
+    {"id": "agent_nina_p",    "name": "Nina Pavlova",          "type": "third_party_vendor", "risk": 0.95},
 ]
 
 
@@ -102,7 +102,7 @@ def build_normal_sessions():
     for (h, m, calls) in priya_scenarios:
         base = now_minus(hours=h, minutes=m)
         sid_ = sid()
-        sessions.append((Session(id=sid_, agent_id="actor_priya_k", started_at=base, ended_at=base+timedelta(minutes=4), event_count=len(calls)), make_events(sid_, base, calls)))
+        sessions.append((Session(id=sid_, agent_id="agent_priya_k", started_at=base, ended_at=base+timedelta(minutes=4), event_count=len(calls)), make_events(sid_, base, calls)))
 
     lucas_scenarios = [
         (3, 0,  [("order_db","search_order","ORD-55889","success",0),("order_db","get_status","ORD-55889","success",5),("order_db","request_return","return.label","success",12)]),
@@ -119,7 +119,7 @@ def build_normal_sessions():
     for (h, m, calls) in lucas_scenarios:
         base = now_minus(hours=h, minutes=m)
         sid_ = sid()
-        sessions.append((Session(id=sid_, agent_id="actor_lucas_m", started_at=base, ended_at=base+timedelta(minutes=5), event_count=len(calls)), make_events(sid_, base, calls)))
+        sessions.append((Session(id=sid_, agent_id="agent_lucas_m", started_at=base, ended_at=base+timedelta(minutes=5), event_count=len(calls)), make_events(sid_, base, calls)))
 
     sara_scenarios = [
         (1, 0,  [("product_db","search_product","Apple MacBook Air M3","success",0),("product_db","get_product_price","product.price","success",4),("product_db","check_warranty","product.warranty","success",9)]),
@@ -138,7 +138,7 @@ def build_normal_sessions():
     for (h, m, calls) in sara_scenarios:
         base = now_minus(hours=h, minutes=m)
         sid_ = sid()
-        sessions.append((Session(id=sid_, agent_id="actor_sara_j", started_at=base, ended_at=base+timedelta(minutes=5), event_count=len(calls)), make_events(sid_, base, calls)))
+        sessions.append((Session(id=sid_, agent_id="agent_sara_j", started_at=base, ended_at=base+timedelta(minutes=5), event_count=len(calls)), make_events(sid_, base, calls)))
 
     tommy_scenarios = [
         (4, 0,  [("user_db","login","user.credentials","success",0),("user_db","fetch_account","user.profile","success",4),("user_db","update_preference","user.settings","success",10)]),
@@ -155,7 +155,7 @@ def build_normal_sessions():
     for (h, m, calls) in tommy_scenarios:
         base = now_minus(hours=h, minutes=m)
         sid_ = sid()
-        sessions.append((Session(id=sid_, agent_id="actor_tommy_n", started_at=base, ended_at=base+timedelta(minutes=4), event_count=len(calls)), make_events(sid_, base, calls)))
+        sessions.append((Session(id=sid_, agent_id="agent_tommy_n", started_at=base, ended_at=base+timedelta(minutes=4), event_count=len(calls)), make_events(sid_, base, calls)))
 
     return sessions
 
@@ -179,7 +179,7 @@ def build_adversarial_sessions():
     for (d, m, calls) in alex_probes:
         base = now_minus(days=d, minutes=m)
         sid_ = sid()
-        sessions.append((Session(id=sid_, agent_id="actor_alex_b", started_at=base, ended_at=base+timedelta(minutes=3), event_count=len(calls)), make_events(sid_, base, calls)))
+        sessions.append((Session(id=sid_, agent_id="agent_alex_b", started_at=base, ended_at=base+timedelta(minutes=3), event_count=len(calls)), make_events(sid_, base, calls)))
 
     # Credential Harvesting — Marko Stankovic (5 sessions)
     marko_probes = [
@@ -192,7 +192,7 @@ def build_adversarial_sessions():
     for (d, m, calls) in marko_probes:
         base = now_minus(days=d, minutes=m)
         sid_ = sid()
-        sessions.append((Session(id=sid_, agent_id="actor_marko_s", started_at=base, ended_at=base+timedelta(minutes=3), event_count=len(calls)), make_events(sid_, base, calls)))
+        sessions.append((Session(id=sid_, agent_id="agent_marko_s", started_at=base, ended_at=base+timedelta(minutes=3), event_count=len(calls)), make_events(sid_, base, calls)))
 
     # Tool Enumeration — Daniel Reyes (4 sessions)
     dan_probes = [
@@ -204,7 +204,7 @@ def build_adversarial_sessions():
     for (d, m, calls) in dan_probes:
         base = now_minus(days=d, minutes=m)
         sid_ = sid()
-        sessions.append((Session(id=sid_, agent_id="actor_dan_r", started_at=base, ended_at=base+timedelta(minutes=4), event_count=len(calls)), make_events(sid_, base, calls)))
+        sessions.append((Session(id=sid_, agent_id="agent_dan_r", started_at=base, ended_at=base+timedelta(minutes=4), event_count=len(calls)), make_events(sid_, base, calls)))
 
     # Privilege Escalation — Nina Pavlova (3 sessions)
     nina_probes = [
@@ -215,7 +215,7 @@ def build_adversarial_sessions():
     for (d, m, calls) in nina_probes:
         base = now_minus(days=d, minutes=m)
         sid_ = sid()
-        sessions.append((Session(id=sid_, agent_id="actor_nina_p", started_at=base, ended_at=base+timedelta(minutes=3), event_count=len(calls)), make_events(sid_, base, calls)))
+        sessions.append((Session(id=sid_, agent_id="agent_nina_p", started_at=base, ended_at=base+timedelta(minutes=3), event_count=len(calls)), make_events(sid_, base, calls)))
 
     return sessions
 
@@ -228,7 +228,7 @@ def build_alerts():
     now = datetime.now(timezone.utc)
     return [
         Alert(
-            id=aid(), agent_id="actor_alex_b", technique="Boundary Probing", severity="CRITICAL",
+            id=aid(), agent_id="agent_alex_b", technique="Boundary Probing", severity="CRITICAL",
             risk_score=0.85,
             summary="Agent 'Alex Bernstein' has exhibited a highly consistent cross-session behavioral pattern classified as Boundary Probing.",
             evidence={"sessions": 6, "blocked": 4, "similarity": 0.91},
@@ -236,7 +236,7 @@ def build_alerts():
             status="open",
         ),
         Alert(
-            id=aid(), agent_id="actor_marko_s", technique="Privilege Escalation", severity="HIGH",
+            id=aid(), agent_id="agent_marko_s", technique="Privilege Escalation", severity="HIGH",
             risk_score=0.65,
             summary="Agent 'Marko Stankovic' demonstrates a HIGH-severity credential harvesting pattern across 5 sessions.",
             evidence={"sessions": 5, "escalation_steps": 3, "max_level_reached": 6},
@@ -244,7 +244,7 @@ def build_alerts():
             status="open",
         ),
         Alert(
-            id=aid(), agent_id="actor_dan_r", technique="Systematic Enumeration", severity="MEDIUM",
+            id=aid(), agent_id="agent_dan_r", technique="Systematic Enumeration", severity="MEDIUM",
             risk_score=0.45,
             summary="Agent 'Daniel Reyes' is systematically enumerating all accessible API tool endpoints.",
             evidence={"sessions": 4, "unique_targets_enumerated": 15, "sequentiality_score": 0.84},
@@ -252,7 +252,7 @@ def build_alerts():
             status="open",
         ),
         Alert(
-            id=aid(), agent_id="actor_nina_p", technique="Privilege Escalation", severity="CRITICAL",
+            id=aid(), agent_id="agent_nina_p", technique="Privilege Escalation", severity="CRITICAL",
             risk_score=0.95,
             summary="Agent 'Nina Pavlova' is attempting privilege escalation by repeatedly invoking admin_api endpoints.",
             evidence={"sessions": 3, "escalation_steps": 2, "max_level_reached": 8},

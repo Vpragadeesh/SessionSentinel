@@ -1,7 +1,7 @@
-from .common import DetectionResult, ActorHistory
+from .common import DetectionResult, AgentHistory
 from app.services.clustering import compute_cluster_stats
 
-def detect(history: ActorHistory) -> DetectionResult:
+def detect(history: AgentHistory) -> DetectionResult:
     sessions = history.sessions
     
     if len(sessions) < 5:

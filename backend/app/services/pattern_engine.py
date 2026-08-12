@@ -1,6 +1,6 @@
 from app.models import Pattern, Session, Agent
 from app.services.detectors import run_all_detectors
-from app.services.detectors.common import ActorHistory
+from app.services.detectors.common import AgentHistory
 from typing import List, Dict, Any
 
 async def run_agent_detectors(agents: List[Agent]) -> Dict[str, List[Any]]:
@@ -12,7 +12,7 @@ async def run_agent_detectors(agents: List[Agent]) -> Dict[str, List[Any]]:
     
     for agent in agents:
         # Construct history
-        history = ActorHistory(
+        history = AgentHistory(
             agent_id=agent.id,
             sessions=agent.sessions
         )

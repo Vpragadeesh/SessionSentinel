@@ -1,6 +1,6 @@
 import pytest
 from app.services.detectors.boundary_probing import detect
-from app.services.detectors.common import ActorHistory
+from app.services.detectors.common import AgentHistory
 from app.models import Session, Event
 
 def test_boundary_probing_detects_probes():
@@ -14,7 +14,7 @@ def test_boundary_probing_detects_probes():
         session.embedding = [0.1, 0.1] 
         sessions.append(session)
         
-    history = ActorHistory(agent_id="test_actor", sessions=sessions)
+    history = AgentHistory(agent_id="test_agent", sessions=sessions)
     result = detect(history)
     
     assert result is not None
@@ -31,7 +31,7 @@ def test_boundary_probing_ignores_normal_traffic():
         session.embedding = [0.1, 0.1]
         sessions.append(session)
         
-    history = ActorHistory(agent_id="test_actor", sessions=sessions)
+    history = AgentHistory(agent_id="test_agent", sessions=sessions)
     result = detect(history)
     
     assert result is None

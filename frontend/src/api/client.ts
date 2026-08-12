@@ -42,7 +42,7 @@ export interface Alert {
   status: string;
 }
 
-export interface ActorRisk {
+export interface AgentRisk {
   id: string;
   name: string;
   type: string;
@@ -53,7 +53,7 @@ export interface ActorRisk {
   status?: string;
 }
 
-export interface Agent extends ActorRisk {}
+export interface Agent extends AgentRisk {}
 
 export interface EventItem {
   id: string;
@@ -98,8 +98,8 @@ export const api = {
     return res.data;
   },
 
-  getTopRiskyAgents: async (): Promise<ActorRisk[]> => {
-    const res = await apiClient.get('/agents/top-risk');
+  getTopRiskyAgents: async (): Promise<AgentRisk[]> => {
+    const res = await apiClient.get<AgentRisk[]>('/agents/top-risk');
     return res.data;
   },
   

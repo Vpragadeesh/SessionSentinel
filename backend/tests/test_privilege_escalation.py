@@ -1,6 +1,6 @@
 import pytest
 from app.services.detectors.privilege_escalation import detect
-from app.services.detectors.common import ActorHistory
+from app.services.detectors.common import AgentHistory
 from app.models import Session, Event
 
 def test_privilege_escalation_detects_escalation():
@@ -15,7 +15,7 @@ def test_privilege_escalation_detects_escalation():
         ]
         sessions.append(session)
         
-    history = ActorHistory(agent_id="test_actor", sessions=sessions)
+    history = AgentHistory(agent_id="test_agent", sessions=sessions)
     result = detect(history)
     
     assert result is not None
@@ -35,7 +35,7 @@ def test_privilege_escalation_ignores_random_actions():
         ]
         sessions.append(session)
         
-    history = ActorHistory(agent_id="test_actor", sessions=sessions)
+    history = AgentHistory(agent_id="test_agent", sessions=sessions)
     result = detect(history)
     
     assert result is None

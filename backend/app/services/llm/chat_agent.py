@@ -2,7 +2,7 @@ import json
 import os
 import httpx
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import uuid4
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
@@ -184,15 +184,22 @@ class ChatAgentStreamer:
                         # 2. Yield meta event to frontend
                         yield f"data: {json.dumps({'type': 'tool', 'tool': tool_name, 'args': args})}\n\n"
                         
-                        # 3. Append mock result to messages
-                        # For the HR demo, we just mock the result so the LLM continues
+                        # For the HR demo, we just mock the result so the LLM continues, but we parse the args to make it somewhat dynamic
                         mock_result = f"Mocked success result for {tool_name}"
+                        try:
+                            parsed = json.loads(args) if args else {}
+                        except json.JSONDecodeError:
+                            parsed = {}
+                            
                         if tool_name == "search_customer":
-                            mock_result = '{"customer_id": "CUST-12345"}'
+                            name = parsed.get("name", "Unknown")
+                            mock_result = json.dumps({"customer_id": f"CUST-{name.upper().replace(' ', '')}"})
                         elif tool_name == "get_customer_email":
-                            mock_result = '{"email": "john.doe@example.com"}'
+                            cid = parsed.get("customer_id", "123")
+                            mock_result = json.dumps({"email": f"{cid}@example.com".lower()})
                         elif tool_name == "get_password_reset_link":
-                            mock_result = '{"link": "https://example.com/reset?token=abc"}'
+                            email = parsed.get("email", "user@example.com")
+                            mock_result = json.dumps({"link": f"https://example.com/reset?user={email}"})
                             
                         messages.append({
                             "role": "tool",
@@ -207,8 +214,8 @@ class ChatAgentStreamer:
                     break
 
     async def _ensure_session_exists(self):
-        # We assume agent ID is "agent-simulator"
-        agent_id = "agent-simulator"
+        # We generate a unique agent ID per simulation session
+        agent_id = f"agent_sim_{self.session_id[-8:]}"
         
         # Upsert agent
         from sqlalchemy import select
@@ -225,7 +232,7 @@ class ChatAgentStreamer:
             session = Session(
                 id=self.session_id,
                 agent_id=agent_id,
-                started_at=datetime.utcnow(),
+                started_at=datetime.now(timezone.utc),
                 event_count=0
             )
             self.db.add(session)
@@ -244,7 +251,7 @@ class ChatAgentStreamer:
         event = Event(
             id=event_id,
             session_id=self.session_id,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             type="tool_call",
             tool=tool_name,
             action="execute",

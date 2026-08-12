@@ -84,23 +84,47 @@ async def run_analysis(db: AsyncSession = Depends(get_db)):
         noise_count = len(clusters.get(-1, []))
         logger.info(f"Found {len(unique_clusters)} clusters, {noise_count} noise points")
         
-        # We don't necessarily need to save patterns to DB anymore since alerts represent them,
-        # but if we want to keep backwards compatibility for UI 'patterns' list we can.
-        # But we will focus on the new agent flow.
+        # Save patterns to DB
+        await db.execute(delete(Pattern))
         
+        for cluster_id, c_session_ids in clusters.items():
+            if cluster_id == -1:
+                continue
+                
+            c_sessions = [s for s in all_sessions if s.id in c_session_ids]
+            c_agents = set([s.agent_id for s in c_sessions])
+            stats = compute_cluster_stats(c_sessions)
+            
+            # Note: We won't generate LLM explanations synchronously here because it's slow, 
+            # we just persist the stats. 
+            sensitive_ratio = stats.get("sensitive_ratio", 0.0)
+            
+            p = Pattern(
+                name=f"Cluster {cluster_id}",
+                severity="HIGH" if sensitive_ratio > 0.5 else "MEDIUM",
+                confidence=round(stats.get("avg_similarity", 0.0), 2),
+                affected_sessions=len(c_sessions),
+                affected_agents=len(c_agents),
+                common_tools=list(stats.get("common_tools", [])),
+                common_actions=list(stats.get("common_actions", [])),
+                cluster_id=cluster_id
+            )
+            db.add(p)
+        await db.commit()
+
     # ── Step 4: Run Agent-level behavioral detectors ───────────────────────
     result = await db.execute(
         select(Agent).options(selectinload(Agent.sessions).selectinload(Session.events))
     )
-    all_actors = result.scalars().all()
+    all_agents = result.scalars().all()
     
-    actor_detections = await run_agent_detectors(all_actors)
+    agent_detections = await run_agent_detectors(all_agents)
     
     # ── Step 5 & 6: Update Risk & Generate Alerts ──────────────────────────
     alerts_created_count = 0
-    for agent in all_actors:
-        if agent.id in actor_detections:
-            results = actor_detections[agent.id]
+    for agent in all_agents:
+        if agent.id in agent_detections:
+            results = agent_detections[agent.id]
             # Update risk score
             await update_agent_risk(db, agent, results)
             # Process alerts
@@ -112,8 +136,8 @@ async def run_analysis(db: AsyncSession = Depends(get_db)):
 
     return {
         "message": "Analysis complete",
-        "actors_analyzed": len(all_actors),
-        "detections_found": len(actor_detections),
+        "agents_analyzed": len(all_agents),
+        "detections_found": len(agent_detections),
         "alerts_processed": alerts_created_count
     }
 

@@ -73,7 +73,7 @@ async def bulk_ingest_sessions(
 ):
     """
     Bulk ingest sessions from the simulator.
-    Each item must have: id, agent_id, actor_name, started_at, ended_at, events[]
+    Each item must have: id, agent_id, agent_name, started_at, ended_at, events[]
     Creates agents if they don't already exist. Skips duplicate sessions/events.
     """
     from datetime import datetime, timezone
@@ -84,8 +84,8 @@ async def bulk_ingest_sessions(
 
     for session_data in sessions_data:
         # Upsert agent
-        # Accept either agent_id (old format) or agent_id
-        agent_id = session_data.get("agent_id") or session_data.get("agent_id")
+        # Accept either agent_id (new format) or actor_id (old format)
+        agent_id = session_data.get("agent_id") or session_data.get("actor_id")
         if not agent_id:
             continue
             
@@ -94,7 +94,7 @@ async def bulk_ingest_sessions(
         if not agent:
             agent = Agent(
                 id=agent_id,
-                name=session_data.get("actor_name", session_data.get("agent_name", f"Agent-{agent_id[-4:]}")),
+                name=session_data.get("agent_name", f"Agent-{agent_id[-4:]}"),
                 type="simulated",
             )
             db.add(agent)

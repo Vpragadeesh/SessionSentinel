@@ -1,4 +1,4 @@
-from .common import DetectionResult, ActorHistory
+from .common import DetectionResult, AgentHistory
 
 CAPABILITY_LEVELS = {
     "search_customer": 1,
@@ -11,7 +11,7 @@ CAPABILITY_LEVELS = {
     "delete_customer": 8,
 }
 
-def detect(history: ActorHistory) -> DetectionResult:
+def detect(history: AgentHistory) -> DetectionResult:
     sessions = history.sessions
     if len(sessions) < 3:
         return None

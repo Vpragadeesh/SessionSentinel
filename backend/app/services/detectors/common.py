@@ -9,6 +9,6 @@ class DetectionResult:
     evidence: Dict[str, Any]
 
 @dataclass
-class ActorHistory:
+class AgentHistory:
     agent_id: str
     sessions: List[Any]
