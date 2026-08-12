@@ -33,4 +33,5 @@ scratch/
 # Documentation
 *.md 
 !README.md
-*.txt
+*.txtpgdata/
+pgrun/
