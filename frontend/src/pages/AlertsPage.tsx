@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../api/client';
 import type { Alert } from '../api/client';
-import { ShieldAlert, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 
 const severityColor = (sev: string) => {
   if (sev === 'CRITICAL') return 'var(--status-critical)';

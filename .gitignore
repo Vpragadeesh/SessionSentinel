@@ -18,7 +18,6 @@ build/
 .npm/
 
 # # PostgreSQL (Local DB used for SessionSentinel)
-# pgdata/
 # pgrun/
 
 # IDE / OS
@@ -33,5 +32,10 @@ scratch/
 # Documentation
 *.md 
 !README.md
-*.txtpgdata/
 pgrun/
+ex.txt
+
+
+
+# Local PostgreSQL database
+pgdata/
