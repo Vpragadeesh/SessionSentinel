@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.v1 import events, sessions, patterns, analysis, dashboard, agents, chat
+from app.api.v1 import events, sessions, patterns, analysis, dashboard, agents, alerts, chat
 from app.db.database import init_db
 from app.config import settings
 
@@ -26,6 +26,7 @@ async def startup():
 
 
 app.include_router(agents.router, prefix="/api/v1")
+app.include_router(alerts.router, prefix="/api/v1")
 app.include_router(events.router, prefix="/api/v1")
 app.include_router(sessions.router, prefix="/api/v1")
 app.include_router(patterns.router, prefix="/api/v1")

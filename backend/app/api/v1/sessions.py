@@ -26,7 +26,11 @@ async def list_sessions(
     db: AsyncSession = Depends(get_db)
 ):
     result = await db.execute(
-        select(Session).offset(skip).limit(limit).order_by(Session.started_at.desc())
+        select(Session)
+        .options(selectinload(Session.events))
+        .offset(skip)
+        .limit(limit)
+        .order_by(Session.started_at.desc())
     )
     return result.scalars().all()
 
@@ -69,7 +73,7 @@ async def bulk_ingest_sessions(
 ):
     """
     Bulk ingest sessions from the simulator.
-    Each item must have: id, agent_id, agent_name, started_at, ended_at, events[]
+    Each item must have: id, agent_id, actor_name, started_at, ended_at, events[]
     Creates agents if they don't already exist. Skips duplicate sessions/events.
     """
     from datetime import datetime, timezone
@@ -80,15 +84,23 @@ async def bulk_ingest_sessions(
 
     for session_data in sessions_data:
         # Upsert agent
-        agent_id = session_data["agent_id"]
+        # Accept either agent_id (old format) or agent_id
+        agent_id = session_data.get("agent_id") or session_data.get("agent_id")
+        if not agent_id:
+            continue
+            
         result = await db.execute(select(Agent).where(Agent.id == agent_id))
-        if not result.scalar_one_or_none():
+        agent = result.scalar_one_or_none()
+        if not agent:
             agent = Agent(
                 id=agent_id,
-                name=session_data.get("agent_name", f"Agent-{agent_id[-4:]}"),
+                name=session_data.get("actor_name", session_data.get("agent_name", f"Agent-{agent_id[-4:]}")),
                 type="simulated",
             )
             db.add(agent)
+        else:
+            # Update last_seen
+            agent.last_seen_at = datetime.now(timezone.utc)
 
         # Skip if session already exists
         result = await db.execute(select(Session).where(Session.id == session_data["id"]))
@@ -124,6 +136,10 @@ async def bulk_ingest_sessions(
                 action=evt.get("action"),
                 resource=evt.get("resource"),
                 status=evt.get("status", "success"),
+                guardrail_outcome=evt.get("guardrail_outcome"),
+                guardrail_rule=evt.get("guardrail_rule"),
+                input_hash=evt.get("input_hash"),
+                metadata_json=evt.get("metadata_json"),
             )
             db.add(event)
             events_created += 1
