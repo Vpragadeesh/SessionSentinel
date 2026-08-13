@@ -27,19 +27,21 @@ By correlating subtle cross-session behavior—like progressive data probing, cr
 
 ## ⚙️ Setup Instructions
 
-### 1. Start the Local Database
-Ensure PostgreSQL is running on `127.0.0.1:5432` using the custom local socket and data directories:
-```bash
-pg_ctl -D ./pgdata -o "-p 5432 -k ./pgrun" start
-```
-
-### 2. Configure & Start the Backend
-Set up your API keys in `backend/.env`:
+### 1. Configure the Environment
+Set up your API keys and PostgreSQL database connection in `backend/.env`. The project uses an external Aiven PostgreSQL cloud database:
 ```env
+POSTGRES_USER=avnadmin
+POSTGRES_PASSWORD=<your_aiven_password>
+POSTGRES_DB=defaultdb
+POSTGRES_HOST=<your_aiven_host>.aivencloud.com
+POSTGRES_PORT=14659
+POSTGRES_SSLMODE=require
+
 NVIDIA_NIM_API_KEY=your_nim_key
 GROQ_API_KEY=your_groq_key
-DATABASE_URL=postgresql+asyncpg://postgres:postgres@127.0.0.1/sessionsentinel
 ```
+
+### 2. Start the Backend
 Start the FastAPI server:
 ```bash
 cd backend
@@ -82,15 +84,14 @@ To demonstrate the full power of the cross-session correlation engine:
 ## 📚 Documentation
 For detailed insights into the architecture and requirements mapping, please review:
 - [flow.md](./flow.md): System Architecture & Workflow Diagram
-- [analysis_report.md](./analysis_report.md): Implementation Analysis against core motives
 
 ---
 
 ## ☁️ Aiven PostgreSQL Deployment
 
-This project uses Alembic and environment configuration to seamlessly migrate from local EC2 deployments to managed Aiven PostgreSQL clusters. 
+This project currently uses a managed Aiven PostgreSQL cluster. The configuration in `backend/.env` automatically constructs the database URL (via `backend/app/config.py`) to connect securely to the cloud instance using SSL.
 
-### Migration Runbook
+### Migration Runbook (Reference)
 1. **Provision**: Create a PostgreSQL service in Aiven and rotate the default `avnadmin` password.
 2. **Snapshot**: Create a logical dump of your EC2 data (do not destroy EC2!):
    ```bash
