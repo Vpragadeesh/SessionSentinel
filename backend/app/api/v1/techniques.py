@@ -1,3 +1,4 @@
+from typing import Optional, List
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -11,12 +12,12 @@ class TechniqueResponse(BaseModel):
     id: str
     name: str
     risk_weight: float
-    description: str | None = None
+    description: Optional[str] = None
 
     class Config:
         from_attributes = True
 
-@router.get("", response_model=list[TechniqueResponse])
+@router.get("", response_model=List[TechniqueResponse])
 async def get_techniques(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Technique).order_by(Technique.risk_weight.desc()))
     return result.scalars().all()

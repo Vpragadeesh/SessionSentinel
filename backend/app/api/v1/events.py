@@ -1,3 +1,4 @@
+from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -25,7 +26,7 @@ async def get_event(event_id: str, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Event not found")
     return event
 
-@router.get("/telemetry/guardrails", response_model=list[EventResponse])
+@router.get("/telemetry/guardrails", response_model=List[EventResponse])
 async def get_guardrail_events(db: AsyncSession = Depends(get_db), limit: int = 100):
     result = await db.execute(
         select(Event)
