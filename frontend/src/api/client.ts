@@ -15,6 +15,14 @@ export interface DashboardStats {
   high_risk_count: number;
 }
 
+export interface GuardrailStats {
+  total_events: number;
+  allow_count: number;
+  warn_count: number;
+  block_count: number;
+  block_distribution: Record<string, number>;
+}
+
 export interface Pattern {
   id: string;
   name: string;
@@ -92,9 +100,19 @@ export const api = {
     return res.data;
   },
 
+  getGuardrailStats: async (): Promise<GuardrailStats> => {
+    const res = await apiClient.get<GuardrailStats>('/dashboard/guardrails');
+    return res.data;
+  },
+
   getAlerts: async (status?: string): Promise<Alert[]> => {
     const url = status ? `/alerts?status=${status}` : '/alerts';
     const res = await apiClient.get<Alert[]>(url);
+    return res.data;
+  },
+
+  updateAlert: async (id: string, status: string): Promise<Alert> => {
+    const res = await apiClient.patch<Alert>(`/alerts/${id}`, { status });
     return res.data;
   },
 

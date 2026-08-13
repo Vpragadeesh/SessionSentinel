@@ -1,23 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
-import type { DashboardStats, Pattern, Alert } from '../api/client';
+import type { Alert, AgentRisk, GuardrailStats } from '../api/client';
 import {
   Activity,
-  ShieldAlert,
   AlertTriangle,
   Play,
   Bug,
   RefreshCw,
   ChevronRight,
-  Eye,
   ShieldCheck,
-  AlertCircle,
+  ShieldAlert,
+  Users,
+  TerminalSquare
 } from 'lucide-react';
-import { ThreatDetailsModal } from '../components/ThreatDetailsModal';
 
 const severityColor = (s: string) => {
-  switch (s) {
+  switch (s.toUpperCase()) {
     case 'CRITICAL': return 'var(--status-critical)';
     case 'HIGH':     return 'var(--status-high)';
     case 'MEDIUM':   return 'var(--status-medium)';
@@ -25,32 +24,27 @@ const severityColor = (s: string) => {
   }
 };
 
-const getBadgeClass = (s: string) => {
-  switch (s.toUpperCase()) {
-    case 'CRITICAL': return 'badge badge-critical';
-    case 'HIGH':     return 'badge badge-high';
-    case 'MEDIUM':   return 'badge badge-medium';
-    default:         return 'badge badge-low';
-  }
-};
-
 export const Dashboard: React.FC = () => {
-  const [stats, setStats]       = useState<DashboardStats | null>(null);
-  const [patterns, setPatterns] = useState<Pattern[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
-  const [loading, setLoading]   = useState(true);
+  const [agents, setAgents] = useState<AgentRisk[]>([]);
+  const [guardrails, setGuardrails] = useState<GuardrailStats | null>(null);
+  
+  const [loading, setLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
   const [injecting, setInjecting] = useState(false);
   const [resetting, setResetting] = useState(false);
-  const [selected, setSelected] = useState<Pattern | null>(null);
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [s, p, a] = await Promise.all([api.getStats(), api.getPatterns(), api.getAlerts()]);
-      setStats(s);
-      setPatterns(p);
+      const [a, ag, g] = await Promise.all([
+        api.getAlerts(), 
+        api.getAgents(),
+        api.getGuardrailStats()
+      ]);
       setAlerts(a);
+      setAgents(ag);
+      setGuardrails(g);
     } catch (e) {
       console.error(e);
     } finally {
@@ -82,221 +76,207 @@ export const Dashboard: React.FC = () => {
     finally { setResetting(false); }
   };
 
-  /* ── Posture calculation ─────────────────────────────────────── */
-  const critCount = patterns.filter(p => p.severity === 'CRITICAL').length;
-  const highCount = patterns.filter(p => p.severity === 'HIGH').length;
+  /* ── Metric calculations ─────────────────────────────────────── */
+  const activeAlertsCount = alerts.filter(a => a.status !== 'resolved').length;
+  const riskyAgentsCount = agents.filter(a => a.current_risk_score >= 0.5).length;
+  const uniqueTechniques = Array.from(new Set(alerts.map(a => a.technique))).length;
+  const blockRate = guardrails && guardrails.total_events > 0 
+    ? (guardrails.block_count / guardrails.total_events) * 100 
+    : 0;
+
+  const hasCritical = alerts.some(a => a.severity === 'CRITICAL' && a.status !== 'resolved');
+  const hasHigh = alerts.some(a => a.severity === 'HIGH' && a.status !== 'resolved');
+  
   const postureLabel =
-    critCount > 0 ? 'CRITICAL' :
-    highCount > 0 ? 'HIGH' :
-    patterns.length > 0 ? 'ELEVATED' : 'NORMAL';
+    hasCritical ? 'CRITICAL' :
+    hasHigh ? 'HIGH' :
+    activeAlertsCount > 0 ? 'ELEVATED' : 'NORMAL';
 
-  const postureClass =
-    postureLabel === 'CRITICAL' ? 'critical' :
-    postureLabel === 'HIGH'     ? 'high' :
-    postureLabel === 'ELEVATED' ? 'elevated' : 'normal';
-
+  const postureColor = severityColor(postureLabel);
   const busy = analyzing || injecting || resetting;
+
+  // Top Techniques sorted by block count from Guardrails
+  const topTechniques = guardrails ? 
+    Object.entries(guardrails.block_distribution)
+      .filter(([k]) => k !== 'Uncategorized')
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 5)
+    : [];
 
   return (
     <div className="animate-fade-in">
       {/* ── Page Header ─────────────────────────────────────────────── */}
       <div className="page-header">
         <div>
-          <h1 className="page-title">Overview</h1>
-          <p className="page-subtitle">Cross-session behavioral security summary</p>
+          <h1 className="page-title">Session Sentinel</h1>
+          <p className="page-subtitle">Behavioral guardrails & threat detection</p>
         </div>
-
-        <div className="flex items-center gap-3">
-          <button className="btn btn-sm" onClick={handleReset} disabled={busy}>
-            <RefreshCw size={13} className={resetting ? 'animate-spin' : ''} />
-            {resetting ? 'Resetting…' : 'Reset'}
+        <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <button className="btn" onClick={handleReset} disabled={busy}>
+            {resetting ? <RefreshCw size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+            Reset Env
           </button>
-          <button className="btn btn-sm btn-danger" onClick={handleInject} disabled={busy}>
-            <Bug size={13} />
-            {injecting ? 'Injecting…' : 'Inject Attack'}
+          <button className="btn" onClick={handleInject} disabled={busy}>
+            {injecting ? <RefreshCw size={13} className="animate-spin" /> : <Bug size={13} />}
+            Inject Attack
           </button>
-          <button className="btn btn-sm btn-primary" onClick={handleAnalyze} disabled={busy}>
-            <Play size={13} />
-            {analyzing ? 'Running…' : 'Run Pipeline'}
+          <button className="btn btn-primary" onClick={handleAnalyze} disabled={busy}>
+            {analyzing ? <RefreshCw size={13} className="animate-spin" /> : <Play size={13} />}
+            Run Pipeline
           </button>
         </div>
       </div>
 
-      {loading && !stats ? (
+      {loading && !guardrails ? (
         <div style={{ textAlign: 'center', padding: '5rem 0', color: 'var(--text-muted)' }}>
           <RefreshCw size={20} className="animate-spin" style={{ margin: '0 auto 0.75rem' }} />
-          <div style={{ fontSize: '0.85rem' }}>Loading…</div>
+          <div style={{ fontSize: '0.85rem' }}>Loading dashboard…</div>
         </div>
       ) : (
         <>
-          {/* ── 3 Stat Cards ─────────────────────────────────────────── */}
-          <div className="grid grid-cols-3 mb-6">
-            {/* Sessions */}
-            <div className="stat-card">
-              <div className="flex items-center justify-between mb-4">
-                <span className="stat-label">Total Sessions</span>
-                <Activity size={16} color="var(--accent-blue)" />
-              </div>
-              <div className="stat-value">{stats?.total_sessions ?? 0}</div>
-              <div className="stat-sub">Monitored &amp; vectorized</div>
-            </div>
-
-            {/* Clusters */}
-            <div className="stat-card">
-              <div className="flex items-center justify-between mb-4">
-                <span className="stat-label">Detected Clusters</span>
-                <ShieldAlert size={16} color="var(--status-medium)" />
-              </div>
-              <div className="stat-value">{stats?.total_patterns ?? 0}</div>
-              <div className="stat-sub">
-                {patterns.length > 0 ? 'Anomaly clusters found' : 'Clean baseline'}
-              </div>
-            </div>
-
-            {/* High / Critical */}
-            <div className="stat-card">
-              <div className="flex items-center justify-between mb-4">
-                <span className="stat-label">High &amp; Critical</span>
-                <AlertTriangle size={16} color="var(--status-critical)" />
-              </div>
-              <div
-                className="stat-value"
-                style={{ color: alerts.length > 0 ? 'var(--status-critical)' : 'var(--text-primary)' }}
-              >
-                {alerts.length}
-              </div>
-              <div className="stat-sub">
-                {alerts.length > 0 ? 'Requires immediate attention' : 'No active alerts'}
-              </div>
-            </div>
-          </div>
-
-          {/* ── System Posture Hero ──────────────────────────────────── */}
-          <div className="posture-hero mb-6">
+          {/* ── System Posture Banner ────────────────────────────────────── */}
+          <div className="card" style={{ 
+            background: `linear-gradient(to right, ${postureColor}15, transparent)`, 
+            borderLeft: `4px solid ${postureColor}`,
+            marginBottom: '1.5rem',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
             <div>
-              <div style={{ fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.2rem' }}>
                 System Threat Posture
               </div>
-              <div style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                {postureLabel === 'NORMAL'
-                  ? 'All sessions within normal behavioral variance.'
-                  : `${patterns.length} adversarial clusters and ${alerts.length} alerts detected.`}
+              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: postureColor }}>
+                {postureLabel}
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <span className={`posture-status ${postureClass}`}>
-                <span className={`pulse-dot ${postureLabel !== 'NORMAL' ? 'danger' : ''}`} />
-                {postureLabel}
-              </span>
-              {(patterns.length > 0 || alerts.length > 0) && (
-                <Link to="/alerts" className="btn btn-sm">
-                  View Alerts <ChevronRight size={13} />
+            
+            <div style={{ display: 'flex', gap: '1.5rem', textAlign: 'right' }}>
+              <div>
+                <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>{activeAlertsCount}</div>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Active Alerts</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>{riskyAgentsCount}</div>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Risky Agents</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>{uniqueTechniques}</div>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Techniques</div>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Metric Cards ────────────────────────────────────────────── */}
+          <div className="grid grid-cols-4 gap-4 mb-6">
+            <div className="stat-card">
+              <div className="flex items-center justify-between mb-2">
+                <span className="stat-label">Active Alerts</span>
+                <ShieldAlert size={16} color="var(--status-critical)" />
+              </div>
+              <div className="stat-value">{activeAlertsCount}</div>
+              <div className="stat-sub">Requires triage</div>
+            </div>
+            <div className="stat-card">
+              <div className="flex items-center justify-between mb-2">
+                <span className="stat-label">Risky Agents</span>
+                <Users size={16} color="var(--status-high)" />
+              </div>
+              <div className="stat-value">{riskyAgentsCount}</div>
+              <div className="stat-sub">Score &ge; 0.50</div>
+            </div>
+            <div className="stat-card">
+              <div className="flex items-center justify-between mb-2">
+                <span className="stat-label">Techniques</span>
+                <Activity size={16} color="var(--accent-blue)" />
+              </div>
+              <div className="stat-value">{uniqueTechniques}</div>
+              <div className="stat-sub">Distinct behaviors</div>
+            </div>
+            <div className="stat-card">
+              <div className="flex items-center justify-between mb-2">
+                <span className="stat-label">Block Rate</span>
+                <TerminalSquare size={16} color="var(--text-primary)" />
+              </div>
+              <div className="stat-value">{blockRate.toFixed(1)}%</div>
+              <div className="stat-sub">Guardrail interventions</div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            
+            {/* ── Top Threat Techniques ────────────────────────────────────── */}
+            <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                <h2 style={{ fontSize: '1.05rem', fontWeight: 600 }}>Top Threat Techniques</h2>
+                <Link to="/techniques" className="btn btn-sm">
+                  View All <ChevronRight size={12} />
                 </Link>
+              </div>
+
+              {topTechniques.length === 0 ? (
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
+                  <ShieldCheck size={32} style={{ marginBottom: '0.75rem', opacity: 0.5 }} />
+                  <div style={{ fontSize: '0.85rem' }}>No active threats detected</div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {topTechniques.map(([tech, blocks]) => (
+                    <div key={tech} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: 'var(--bg-inner)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '0.2rem' }}>{tech}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Driving guardrail blocks</div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontWeight: 700, color: 'var(--status-critical)' }}>{blocks}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Blocked Events</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
-          </div>
 
-          {/* ── Detected Threats Table ──────────────────────────────── */}
-          <div className="section-header">
-            <div>
-              <div className="section-title">Detected Behavioral Clusters</div>
-              <div className="section-subtitle">Adversarial probing patterns extracted by SentenceTransformers &amp; DBSCAN</div>
-            </div>
-            {patterns.length > 0 && (
-              <Link to="/threats" className="btn btn-sm">
-                View all <ChevronRight size={13} />
-              </Link>
-            )}
-          </div>
-
-          {patterns.length === 0 ? (
-            <div style={{
-              textAlign: 'center',
-              padding: '3.5rem 2rem',
-              background: 'var(--bg-card)',
-              border: '1px dashed var(--border-hover)',
-              borderRadius: 'var(--radius-md)',
-            }}>
-              <ShieldCheck size={32} style={{ margin: '0 auto 0.75rem', color: 'var(--status-low)' }} />
-              <div style={{ fontWeight: 600, marginBottom: '0.3rem' }}>All Clear — Normal Baseline Active</div>
-              <div style={{ fontSize: '0.83rem', color: 'var(--text-muted)', maxWidth: 420, margin: '0 auto 1.5rem' }}>
-                DBSCAN found zero adversarial clusters. Normal sessions are dispersed as benign variance.
+            {/* ── Recent Critical Alerts ────────────────────────────────────── */}
+            <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                <h2 style={{ fontSize: '1.05rem', fontWeight: 600 }}>Recent Alerts</h2>
+                <Link to="/alerts" className="btn btn-sm">
+                  Alert Center <ChevronRight size={12} />
+                </Link>
               </div>
-              <button className="btn btn-sm btn-danger" onClick={handleInject} disabled={busy}>
-                <Bug size={13} /> Inject Coordinated Attack to Test Detection
-              </button>
-            </div>
-          ) : (
-            <div className="table-wrap">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Pattern Name</th>
-                    <th>Severity</th>
-                    <th>Sessions</th>
-                    <th>Confidence</th>
-                    <th>Detected</th>
-                    <th style={{ textAlign: 'right' }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {patterns.slice(0, 8).map(p => (
-                    <tr key={p.id} className="animate-fade-in">
-                      <td>
-                        <div className="flex items-center gap-2">
-                          <AlertCircle size={14} color={severityColor(p.severity)} style={{ flexShrink: 0 }} />
-                          <span style={{ fontWeight: 500 }}>
-                            {p.name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+
+              {alerts.filter(a => a.status !== 'resolved').length === 0 ? (
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
+                  <ShieldCheck size={32} style={{ marginBottom: '0.75rem', opacity: 0.5 }} />
+                  <div style={{ fontSize: '0.85rem' }}>Inbox zero</div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {alerts.filter(a => a.status !== 'resolved').slice(0, 4).map(alert => (
+                    <div key={alert.id} style={{ display: 'flex', gap: '0.75rem', padding: '0.75rem', background: 'var(--bg-inner)', borderRadius: 'var(--radius-sm)', borderLeft: `3px solid ${severityColor(alert.severity)}` }}>
+                      <AlertTriangle size={16} color={severityColor(alert.severity)} style={{ marginTop: '0.1rem' }} />
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.2rem' }}>
+                          <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>{alert.technique}</span>
+                          <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                            {alert.agent_id}
                           </span>
                         </div>
-                      </td>
-                      <td>
-                        <span className={getBadgeClass(p.severity)}>{p.severity}</span>
-                      </td>
-                      <td style={{ fontWeight: 600 }}>{p.affected_sessions}</td>
-                      <td>
-                        <div className="flex items-center gap-2">
-                          <div style={{
-                            width: 60, height: 5,
-                            background: 'var(--border)',
-                            borderRadius: 4,
-                            overflow: 'hidden',
-                          }}>
-                            <div style={{
-                              width: `${p.confidence * 100}%`,
-                              height: '100%',
-                              background: severityColor(p.severity),
-                              borderRadius: 4,
-                            }} />
-                          </div>
-                          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                            {(p.confidence * 100).toFixed(0)}%
-                          </span>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {alert.summary}
                         </div>
-                      </td>
-                      <td style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                        {new Date(p.detected_at).toLocaleTimeString()}
-                      </td>
-                      <td>
-                        <div className="flex items-center gap-2 justify-end">
-                          <button className="btn btn-sm" onClick={() => setSelected(p)}>
-                            <Eye size={12} /> Inspect
-                          </button>
-                          <Link to={`/pattern/${p.id}`} className="btn btn-sm btn-primary">
-                            Graph <ChevronRight size={12} />
-                          </Link>
-                        </div>
-                      </td>
-                    </tr>
+                      </div>
+                    </div>
                   ))}
-                </tbody>
-              </table>
+                </div>
+              )}
             </div>
-          )}
+            
+          </div>
         </>
       )}
-
-      <ThreatDetailsModal pattern={selected} onClose={() => setSelected(null)} />
     </div>
   );
 };

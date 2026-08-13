@@ -131,3 +131,10 @@ class DashboardStats(BaseModel):
     total_sessions: int
     total_patterns: int
     high_risk_count: int
+
+class GuardrailStats(BaseModel):
+    total_events: int
+    allow_count: int
+    warn_count: int
+    block_count: int
+    block_distribution: Dict[str, int]

@@ -49,7 +49,7 @@ def now_minus(hours=0, minutes=0, days=0):
 
 # ── Agent Definitions ─────────────────────────────────────────────────
 
-ACTORS = [
+AGENTS = [
     # Normal support agents
     {"id": "agent_priya_k",   "name": "Priya Krishnamurthy",  "type": "customer_support",   "risk": 0.0},
     {"id": "agent_lucas_m",   "name": "Lucas Mendes",          "type": "customer_support",   "risk": 0.0},
@@ -280,7 +280,7 @@ async def seed():
         await db.commit()
 
         print("  Inserting 8 named agent identities...")
-        for a in ACTORS:
+        for a in AGENTS:
             now = datetime.now(timezone.utc)
             db.add(Agent(
                 id=a["id"], name=a["name"], type=a["type"],
@@ -317,7 +317,7 @@ async def seed():
     print()
     print("=" * 45)
     print("Seed complete!")
-    print(f"  Agents:   {len(ACTORS)}")
+    print(f"  Agents:   {len(AGENTS)}")
     print(f"  Sessions: {total}  (42 normal + 18 adversarial)")
     print(f"  Events:   {total_events}")
     print(f"  Alerts:   4")

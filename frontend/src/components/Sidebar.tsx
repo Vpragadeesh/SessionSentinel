@@ -8,6 +8,9 @@ import {
   Database,
   MessageSquare,
   CheckCircle2,
+  Crosshair,
+  Activity,
+  CheckSquare
 } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
 import type { Pattern } from '../api/client';
@@ -61,7 +64,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ patterns }) => {
 
       {/* Nav */}
       <nav className="sidebar-nav">
-        <span className="sidebar-section-label">Monitor</span>
+        <span className="sidebar-section-label">MONITOR</span>
 
         <NavItem
           to="/"
@@ -70,25 +73,51 @@ export const Sidebar: React.FC<SidebarProps> = ({ patterns }) => {
         />
 
         <NavItem
+          to="/threats"
+          icon={<Crosshair size={16} />}
+          label="Threats"
+        />
+
+        <NavItem
           to="/alerts"
           icon={<AlertTriangle size={16} />}
-          label="Active Alerts"
+          label="Alerts"
           badge={patterns.length} 
         />
 
         <NavItem
           to="/agents"
           icon={<Users size={16} />}
-          label="Risky Agents"
+          label="Agents"
         />
 
-        <span className="sidebar-section-label">Tools</span>
+        <span className="sidebar-section-label">ANALYSIS</span>
 
         <NavItem
           to="/sessions"
           icon={<Database size={16} />}
-          label="Session Store"
+          label="Sessions"
         />
+        
+        <NavItem
+          to="/techniques"
+          icon={<Activity size={16} />}
+          label="Techniques"
+        />
+        
+        <NavItem
+          to="/guardrails"
+          icon={<Shield size={16} />}
+          label="Guardrails"
+        />
+        
+        <NavItem
+          to="/validation"
+          icon={<CheckSquare size={16} />}
+          label="Validation"
+        />
+
+        <span className="sidebar-section-label">TOOLS</span>
 
         <NavItem
           to="/chat"

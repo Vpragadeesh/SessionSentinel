@@ -8,6 +8,7 @@ export const SessionExplorer: React.FC = () => {
   const [search, setSearch]               = useState('');
   const [selectedSession, setSelectedSession] = useState<SessionItem | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [eventFilter, setEventFilter]     = useState<'ALL' | 'ALLOW' | 'WARN' | 'BLOCK'>('ALL');
 
   const fetchSessions = async () => {
     try {
@@ -205,10 +206,32 @@ export const SessionExplorer: React.FC = () => {
 
             {/* Events */}
             <div>
-              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
-                Event Log ({selectedSession.events?.length ?? 0})
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                  Event Log ({selectedSession.events?.length ?? 0})
+                </div>
+                <div style={{ display: 'flex', gap: '0.3rem' }}>
+                  {['ALL', 'ALLOW', 'WARN', 'BLOCK'].map(f => (
+                    <button 
+                      key={f}
+                      onClick={() => setEventFilter(f as any)}
+                      style={{ 
+                        fontSize: '0.65rem', 
+                        padding: '0.15rem 0.4rem', 
+                        borderRadius: 4, 
+                        border: '1px solid var(--border)',
+                        background: eventFilter === f ? 'var(--bg-card)' : 'transparent',
+                        color: eventFilter === f ? 'var(--text-primary)' : 'var(--text-muted)',
+                        cursor: 'pointer',
+                        fontWeight: eventFilter === f ? 600 : 400
+                      }}
+                    >
+                      {f}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div style={{ maxHeight: 260, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+              <div style={{ maxHeight: 360, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.4rem', paddingRight: '0.5rem' }}>
                 {detailLoading ? (
                   <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem', textAlign: 'center', padding: '1rem' }}>Loading…</div>
                 ) : !selectedSession.events?.length ? (
@@ -216,29 +239,54 @@ export const SessionExplorer: React.FC = () => {
                     No tool events recorded.
                   </div>
                 ) : (
-                  selectedSession.events.map(evt => (
-                    <div key={evt.id} style={{
-                      padding: '0.55rem 0.7rem',
-                      borderRadius: 'var(--radius-sm)',
-                      background: 'var(--bg-inner)',
-                      border: '1px solid var(--border)',
-                      fontSize: '0.75rem',
-                    }}>
-                      <div className="flex justify-between items-center mb-1">
-                        <span style={{ fontWeight: 600, color: 'var(--accent-purple)', fontFamily: 'JetBrains Mono, monospace' }}>
-                          {evt.tool ?? evt.type}
-                        </span>
-                        <span style={{ color: 'var(--text-muted)', fontSize: '0.68rem' }}>
-                          {new Date(evt.timestamp).toLocaleTimeString()}
-                        </span>
-                      </div>
-                      {evt.resource && (
-                        <div style={{ fontFamily: 'JetBrains Mono, monospace', color: 'var(--text-muted)', fontSize: '0.68rem', wordBreak: 'break-all' }}>
-                          {evt.resource}
+                  selectedSession.events
+                    .filter(evt => eventFilter === 'ALL' || evt.guardrail_outcome === eventFilter || (eventFilter === 'ALLOW' && !evt.guardrail_outcome))
+                    .map(evt => {
+                    const outcome = evt.guardrail_outcome || 'ALLOW';
+                    const badgeColor = outcome === 'BLOCK' ? 'var(--status-critical)' : outcome === 'WARN' ? 'var(--status-medium)' : 'var(--status-low)';
+                    
+                    return (
+                      <div key={evt.id} style={{
+                        padding: '0.65rem 0.75rem',
+                        borderRadius: 'var(--radius-sm)',
+                        background: 'var(--bg-inner)',
+                        border: '1px solid var(--border)',
+                        borderLeft: `3px solid ${badgeColor}`,
+                        fontSize: '0.75rem',
+                      }}>
+                        <div className="flex justify-between items-center mb-1">
+                          <span style={{ fontWeight: 600, color: 'var(--accent-purple)', fontFamily: 'JetBrains Mono, monospace' }}>
+                            {evt.tool ?? evt.type}
+                          </span>
+                          <span style={{ color: 'var(--text-muted)', fontSize: '0.68rem' }}>
+                            {new Date(evt.timestamp).toLocaleTimeString()}
+                          </span>
                         </div>
-                      )}
-                    </div>
-                  ))
+                        {evt.resource && (
+                          <div style={{ fontFamily: 'JetBrains Mono, monospace', color: 'var(--text-muted)', fontSize: '0.68rem', wordBreak: 'break-all', marginBottom: '0.4rem' }}>
+                            Resource: {evt.resource}
+                          </div>
+                        )}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px dashed var(--border)' }}>
+                          <span style={{ 
+                            fontSize: '0.65rem', 
+                            fontWeight: 700, 
+                            padding: '0.15rem 0.4rem', 
+                            borderRadius: 4, 
+                            background: badgeColor + '20', 
+                            color: badgeColor 
+                          }}>
+                            {outcome}
+                          </span>
+                          {evt.guardrail_rule && (
+                            <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontFamily: 'JetBrains Mono, monospace' }}>
+                              Rule: {evt.guardrail_rule}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
                 )}
               </div>
             </div>

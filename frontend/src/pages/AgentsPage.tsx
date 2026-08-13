@@ -3,6 +3,7 @@ import { api } from '../api/client';
 import type { AgentRisk } from '../api/client';
 import { RefreshCw, Users, Clock, UserX } from 'lucide-react';
 import { SystemHealthCard } from '../components/SystemHealthCard';
+import { AgentDetailPanel } from '../components/AgentDetailPanel';
 
 const riskColor = (score: number) =>
   score >= 1.5 ? 'var(--status-critical)' :
@@ -12,6 +13,7 @@ const riskColor = (score: number) =>
 export const AgentsPage: React.FC = () => {
   const [agents, setAgents] = useState<AgentRisk[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
 
   const fetchData = async () => {
     setLoading(true);
@@ -90,7 +92,12 @@ export const AgentsPage: React.FC = () => {
                       const pct = Math.min(100, Math.round((a.current_risk_score / 3.0) * 100));
                       const isHigh = a.current_risk_score >= 1.5;
                       return (
-                        <tr key={a.id} className="animate-fade-in">
+                        <tr 
+                          key={a.id} 
+                          className="animate-fade-in"
+                          onClick={() => setSelectedAgentId(a.id)}
+                          style={{ cursor: 'pointer', background: selectedAgentId === a.id ? 'var(--bg-inner)' : undefined }}
+                        >
                           <td>
                             <span style={{
                               fontFamily: 'JetBrains Mono, monospace',
@@ -143,6 +150,13 @@ export const AgentsPage: React.FC = () => {
                   </tbody>
                 </table>
               </div>
+            )}
+
+            {selectedAgentId && (
+              <AgentDetailPanel 
+                agent={agents.find(a => a.id === selectedAgentId)!} 
+                onClose={() => setSelectedAgentId(null)} 
+              />
             )}
           </div>
 
