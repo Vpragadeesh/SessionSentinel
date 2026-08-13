@@ -83,3 +83,29 @@ To demonstrate the full power of the cross-session correlation engine:
 For detailed insights into the architecture and requirements mapping, please review:
 - [flow.md](./flow.md): System Architecture & Workflow Diagram
 - [analysis_report.md](./analysis_report.md): Implementation Analysis against core motives
+
+---
+
+## ☁️ Aiven PostgreSQL Deployment
+
+This project uses Alembic and environment configuration to seamlessly migrate from local EC2 deployments to managed Aiven PostgreSQL clusters. 
+
+### Migration Runbook
+1. **Provision**: Create a PostgreSQL service in Aiven and rotate the default `avnadmin` password.
+2. **Snapshot**: Create a logical dump of your EC2 data (do not destroy EC2!):
+   ```bash
+   pg_dump -d "postgresql://local_user:local_pass@localhost:5432/sessionsentinel" --format=directory --jobs=4 -f ~/sessionsentinel-migration.dump
+   ```
+3. **Restore**: Restore data to Aiven using `--no-owner`:
+   ```bash
+   pg_restore -d "postgres://avnadmin:<password>@<aiven-host>:<port>/defaultdb?sslmode=require" --jobs=4 --no-owner ~/sessionsentinel-migration.dump
+   ```
+4. **Validate**: Use our automated schema & row-count validation script to ensure 1:1 parity before switching:
+   ```bash
+   cd backend
+   export SOURCE_DB_URL="postgresql+asyncpg://..."
+   export TARGET_DB_URL="postgresql+asyncpg://..."
+   PYTHONPATH=. uv run python scripts/validate_aiven_migration.py
+   ```
+5. **Optimize**: Run `ANALYZE;` via `psql` on the Aiven target to rebuild statistics.
+6. **Cutover**: Stop the application, update the `.env` file with Aiven credentials (`POSTGRES_SSLMODE=verify-full`), and restart the backend!
