@@ -248,6 +248,14 @@ class ChatAgentStreamer:
         result = await self.db.execute(select(Session).where(Session.id == self.session_id))
         session = result.scalar_one()
         
+        # Mock guardrail outcomes for demo realism
+        sensitive_tools = {"get_password_reset_link", "get_customer_email"}
+        g_outcome = None
+        g_rule = None
+        if tool_name in sensitive_tools:
+            g_outcome = "WARN"
+            g_rule = "sensitive_data_access"
+            
         event = Event(
             id=event_id,
             session_id=self.session_id,
@@ -256,7 +264,9 @@ class ChatAgentStreamer:
             tool=tool_name,
             action="execute",
             resource=arguments,
-            status="success"
+            status="success",
+            guardrail_outcome=g_outcome,
+            guardrail_rule=g_rule
         )
         self.db.add(event)
         session.event_count += 1

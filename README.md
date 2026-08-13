@@ -108,4 +108,9 @@ This project uses Alembic and environment configuration to seamlessly migrate fr
    PYTHONPATH=. uv run python scripts/validate_aiven_migration.py
    ```
 5. **Optimize**: Run `ANALYZE;` via `psql` on the Aiven target to rebuild statistics.
-6. **Cutover**: Stop the application, update the `.env` file with Aiven credentials (`POSTGRES_SSLMODE=verify-full`), and restart the backend!
+6. **Stamp Schema**: Since the data was restored directly into Aiven, we must tell Alembic that the baseline schema already exists to prevent it from trying to run `CREATE TABLE` again:
+   ```bash
+   cd backend
+   uv run alembic stamp head
+   ```
+7. **Cutover**: Stop the application, update the `.env` file with Aiven credentials (`POSTGRES_SSLMODE=verify-full`), and restart the backend!

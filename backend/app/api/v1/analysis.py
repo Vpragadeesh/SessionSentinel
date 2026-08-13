@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 from sqlalchemy.orm import selectinload
 from app.db.database import get_db
-from app.models import Session, Event, Pattern, Agent
+from app.models import Session, Event, Agent, Pattern, Technique
 from app.services.fingerprint import build_fingerprint, build_canonical_string
 from app.services.embeddings import generate_embedding, generate_all_embeddings, load_model
 from app.services.clustering import run_clustering, group_sessions_by_cluster, compute_cluster_stats
@@ -121,18 +121,21 @@ async def run_analysis(db: AsyncSession = Depends(get_db)):
     agent_detections = await run_agent_detectors(all_agents)
     
     # ── Step 5 & 6: Update Risk & Generate Alerts ──────────────────────────
+    techniques_result = await db.execute(select(Technique))
+    all_techniques = techniques_result.scalars().all()
+    
     alerts_created_count = 0
     for agent in all_agents:
         if agent.id in agent_detections:
             results = agent_detections[agent.id]
             # Update risk score
-            await update_agent_risk(db, agent, results)
+            await update_agent_risk(db, agent, results, all_techniques)
             # Process alerts
             await process_alerts(db, agent, results)
             alerts_created_count += len(results)
         else:
             # Decay risk even if no new detections
-            await update_agent_risk(db, agent, [])
+            await update_agent_risk(db, agent, [], all_techniques)
 
     return {
         "message": "Analysis complete",
@@ -197,6 +200,8 @@ async def inject_attack_sessions(db: AsyncSession = Depends(get_db)):
                 action=evt.get("action"),
                 resource=evt.get("resource"),
                 status=evt.get("status", "success"),
+                guardrail_outcome=evt.get("guardrail_outcome"),
+                guardrail_rule=evt.get("guardrail_rule"),
             )
             db.add(event)
             events_created += 1

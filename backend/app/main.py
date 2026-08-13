@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1 import events, sessions, patterns, analysis, dashboard, agents, alerts, chat
-from app.db.database import init_db
 from app.config import settings
 
 
@@ -22,7 +21,7 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def startup():
-    await init_db()
+    pass
 
 
 app.include_router(agents.router, prefix="/api/v1")
