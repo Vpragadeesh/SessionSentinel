@@ -1,14 +1,23 @@
 import React, { useEffect, useState } from 'react';
-import { api, type GuardrailStats } from '../api/client';
+import { api, type GuardrailStats, type EventItem } from '../api/client';
 import { RefreshCw, CheckCircle, AlertTriangle, XCircle, BarChart2 } from 'lucide-react';
 
 export const GuardrailsPage: React.FC = () => {
   const [stats, setStats] = useState<GuardrailStats | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const [events, setEvents] = useState<EventItem[]>([]);
+
   const fetchData = async () => {
     setLoading(true);
-    try { setStats(await api.getGuardrailStats()); }
+    try {
+      const [s, e] = await Promise.all([
+        api.getGuardrailStats(),
+        api.getGuardrailEvents(100)
+      ]);
+      setStats(s);
+      setEvents(e);
+    }
     catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
@@ -122,6 +131,58 @@ export const GuardrailsPage: React.FC = () => {
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* Events Table */}
+          <div className="section-header" style={{ marginTop: '3rem' }}>
+            <div>
+              <div className="section-title">Recent Violations</div>
+              <div className="section-subtitle">Real-time feed of events blocked or warned by guardrails</div>
+            </div>
+          </div>
+          <div className="card" style={{ padding: '0' }}>
+            {events.length === 0 ? (
+              <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                No guardrail violations recorded yet.
+              </div>
+            ) : (
+              <div className="table-wrap">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Timestamp</th>
+                      <th>Session ID</th>
+                      <th>Outcome</th>
+                      <th>Rule Triggered</th>
+                      <th>Tool/Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {events.map(ev => (
+                      <tr key={ev.id}>
+                        <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                          {new Date(ev.timestamp).toLocaleString()}
+                        </td>
+                        <td style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.8rem', color: 'var(--accent-blue)' }}>
+                          {ev.session_id.substring(0, 14)}...
+                        </td>
+                        <td>
+                          <span className={`badge ${ev.guardrail_outcome === 'BLOCK' ? 'badge-critical' : ev.guardrail_outcome === 'WARN' ? 'badge-high' : 'badge-low'}`}>
+                            {ev.guardrail_outcome}
+                          </span>
+                        </td>
+                        <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                          {ev.guardrail_rule || 'Unknown Rule'}
+                        </td>
+                        <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                          {ev.tool || ev.action || ev.type}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </>
       ) : null}

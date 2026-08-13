@@ -24,3 +24,13 @@ async def get_event(event_id: str, db: AsyncSession = Depends(get_db)):
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
     return event
+
+@router.get("/telemetry/guardrails", response_model=list[EventResponse])
+async def get_guardrail_events(db: AsyncSession = Depends(get_db), limit: int = 100):
+    result = await db.execute(
+        select(Event)
+        .where(Event.guardrail_outcome.in_(["WARN", "BLOCK"]))
+        .order_by(Event.timestamp.desc())
+        .limit(limit)
+    )
+    return result.scalars().all()

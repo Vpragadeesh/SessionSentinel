@@ -93,6 +93,13 @@ export interface ExplainResponse {
   explanation: string;
 }
 
+export interface Technique {
+  id: string;
+  name: string;
+  risk_weight: number;
+  description: string | null;
+}
+
 // API Methods
 export const api = {
   getStats: async (): Promise<DashboardStats> => {
@@ -102,6 +109,11 @@ export const api = {
 
   getGuardrailStats: async (): Promise<GuardrailStats> => {
     const res = await apiClient.get<GuardrailStats>('/dashboard/guardrails');
+    return res.data;
+  },
+
+  getGuardrailEvents: async (limit: number = 100): Promise<EventItem[]> => {
+    const res = await apiClient.get<EventItem[]>(`/events/telemetry/guardrails?limit=${limit}`);
     return res.data;
   },
 
@@ -168,6 +180,11 @@ export const api = {
 
   getPatterns: async (limit: number = 100): Promise<Pattern[]> => {
     const res = await apiClient.get<Pattern[]>(`/patterns?limit=${limit}`);
+    return res.data;
+  },
+
+  getTechniques: async (): Promise<Technique[]> => {
+    const res = await apiClient.get<Technique[]>('/techniques');
     return res.data;
   },
 

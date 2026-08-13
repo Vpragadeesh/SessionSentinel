@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { api, type Alert } from '../api/client';
+import { api, type Alert, type Technique } from '../api/client';
 import { ShieldAlert, RefreshCw, ChevronRight } from 'lucide-react';
 
 const severityColor = (s: string) => {
@@ -13,12 +13,20 @@ const severityColor = (s: string) => {
 
 export const TechniquesPage: React.FC = () => {
   const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [techDict, setTechDict] = useState<Technique[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTech, setSelectedTech] = useState<string | null>(null);
 
   const fetchData = async () => {
     setLoading(true);
-    try { setAlerts(await api.getAlerts()); }
+    try {
+      const [fetchedAlerts, fetchedTechs] = await Promise.all([
+        api.getAlerts(),
+        api.getTechniques()
+      ]);
+      setAlerts(fetchedAlerts);
+      setTechDict(fetchedTechs);
+    }
     catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
@@ -27,7 +35,7 @@ export const TechniquesPage: React.FC = () => {
 
   // Aggregate alerts by technique
   const techniques = Array.from(new Set(alerts.map(a => a.technique)));
-  
+
   const getTechStats = (tech: string) => {
     const techAlerts = alerts.filter(a => a.technique === tech);
     const maxScore = Math.max(...techAlerts.map(a => a.risk_score));
@@ -35,12 +43,12 @@ export const TechniquesPage: React.FC = () => {
     const hasCritical = techAlerts.some(a => a.severity === 'CRITICAL');
     const hasHigh = techAlerts.some(a => a.severity === 'HIGH');
     const severity = hasCritical ? 'CRITICAL' : hasHigh ? 'HIGH' : 'MEDIUM';
-    const totalSessions = techAlerts.reduce((sum, a) => sum + (a.evidence?.sessions_analyzed || 1), 0);
-    const blockedCount = techAlerts.reduce((sum, a) => sum + (a.evidence?.blocked_events || 0), 0);
-    const similarity = techAlerts[0]?.evidence?.avg_similarity || 0;
-    const repetition = techAlerts[0]?.evidence?.repetition_score || 0;
+    const totalSessions = techAlerts.reduce((sum, a) => sum + (a.evidence?.sessions || 1), 0);
+    const blockedCount = techAlerts.reduce((sum, a) => sum + (a.evidence?.blocked || 0), 0);
+    const similarity = techAlerts[0]?.evidence?.similarity || 0;
+    const repetition = techAlerts[0]?.evidence?.repetition || 0;
     const affectedAgents = Array.from(new Set(techAlerts.map(a => a.agent_id)));
-    
+
     return {
       alerts: techAlerts,
       maxScore,
@@ -83,7 +91,7 @@ export const TechniquesPage: React.FC = () => {
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 400px', gap: '1.5rem', alignItems: 'start' }}>
-          
+
           {/* Left Column: Technique List */}
           <div className="table-wrap">
             <table className="data-table">
@@ -100,10 +108,10 @@ export const TechniquesPage: React.FC = () => {
                 {techniques.map(tech => {
                   const stats = getTechStats(tech);
                   const isSelected = selectedTech === tech;
-                  
+
                   return (
-                    <tr 
-                      key={tech} 
+                    <tr
+                      key={tech}
                       onClick={() => setSelectedTech(tech)}
                       style={{ cursor: 'pointer', background: isSelected ? 'var(--bg-subtle)' : undefined }}
                     >
@@ -145,6 +153,18 @@ export const TechniquesPage: React.FC = () => {
                 <h2 style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-primary)' }}>
                   {selectedTech.toUpperCase()}
                 </h2>
+                {techDict.find(t => t.name === selectedTech)?.description && (
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.5rem', lineHeight: 1.4 }}>
+                    {techDict.find(t => t.name === selectedTech)?.description}
+                  </div>
+                )}
+                {techDict.find(t => t.name === selectedTech) && (
+                  <div style={{ marginTop: '0.5rem' }}>
+                    <span className={`badge ${techDict.find(t => t.name === selectedTech)!.risk_weight > 0.7 ? 'badge-critical' : techDict.find(t => t.name === selectedTech)!.risk_weight > 0.4 ? 'badge-high' : 'badge-medium'}`}>
+                      Risk Weight: {(techDict.find(t => t.name === selectedTech)!.risk_weight * 100).toFixed(0)}%
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Score Bar */}
@@ -155,9 +175,9 @@ export const TechniquesPage: React.FC = () => {
                     {selectedStats.maxScore.toFixed(2)} / 1.00
                   </span>
                 </div>
-                <div style={{ 
-                  fontFamily: 'JetBrains Mono, monospace', 
-                  fontSize: '1rem', 
+                <div style={{
+                  fontFamily: 'JetBrains Mono, monospace',
+                  fontSize: '1rem',
                   letterSpacing: '2px',
                   color: severityColor(selectedStats.severity)
                 }}>

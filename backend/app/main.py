@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.v1 import events, sessions, patterns, analysis, dashboard, agents, alerts, chat
+from app.api.v1 import events, sessions, patterns, analysis, dashboard, agents, alerts, chat, techniques
 from app.config import settings
 
 
@@ -32,6 +32,7 @@ app.include_router(patterns.router, prefix="/api/v1")
 app.include_router(analysis.router, prefix="/api/v1")
 app.include_router(dashboard.router, prefix="/api/v1")
 app.include_router(chat.router, prefix="/api/v1")
+app.include_router(techniques.router, prefix="/api/v1")
 
 
 @app.get("/health")

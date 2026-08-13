@@ -171,16 +171,16 @@ export const AlertsPage: React.FC = () => {
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: 'var(--text-muted)' }}>Sessions:</span>
-                      <span style={{ fontWeight: 600 }}>{evidence.sessions_analyzed || 1}</span>
+                      <span style={{ fontWeight: 600 }}>{evidence.sessions || 1}</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: 'var(--text-muted)' }}>Blocked:</span>
-                      <span style={{ fontWeight: 600 }}>{evidence.blocked_events || 0}</span>
+                      <span style={{ fontWeight: 600 }}>{evidence.blocked || 0}</span>
                     </div>
-                    {evidence.avg_similarity && (
+                    {evidence.similarity && (
                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                         <span style={{ color: 'var(--text-muted)' }}>Similarity:</span>
-                        <span style={{ fontWeight: 600 }}>{evidence.avg_similarity.toFixed(2)}</span>
+                        <span style={{ fontWeight: 600 }}>{evidence.similarity.toFixed(2)}</span>
                       </div>
                     )}
                     {evidence.repetition_score && (
