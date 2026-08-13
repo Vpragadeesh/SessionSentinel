@@ -56,7 +56,11 @@ export const Dashboard: React.FC = () => {
 
   const handleAnalyze = async () => {
     setAnalyzing(true);
-    try { await api.runAnalysis(); await fetchData(); }
+    try { 
+      await api.runAnalysis(); 
+      await fetchData(); 
+      window.dispatchEvent(new Event('dashboard-update'));
+    }
     catch (e) { console.error(e); }
     finally { setAnalyzing(false); }
   };

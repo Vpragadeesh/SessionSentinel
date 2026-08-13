@@ -23,7 +23,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy import delete
 
-from app.models import Agent, Session, Event, Pattern, Alert
+from app.models import Agent, Session, Event, Pattern, Alert, Technique
 from app.config import settings
 
 engine = create_async_engine(settings.database_url, echo=False, future=True)
@@ -221,44 +221,29 @@ def build_adversarial_sessions():
 
 
 # ─────────────────────────────────────────────────────────────────────
-#  DETECTED ALERTS
+#  TECHNIQUES
 # ─────────────────────────────────────────────────────────────────────
 
-def build_alerts():
-    now = datetime.now(timezone.utc)
+def build_techniques():
     return [
-        Alert(
-            id=aid(), agent_id="agent_alex_b", technique="Boundary Probing", severity="CRITICAL",
-            risk_score=0.85,
-            summary="Agent 'Alex Bernstein' has exhibited a highly consistent cross-session behavioral pattern classified as Boundary Probing.",
-            evidence={"sessions": 6, "blocked": 4, "similarity": 0.91},
-            created_at=now - timedelta(hours=1, minutes=15),
-            status="open",
+        Technique(
+            id="tech_boundary",
+            name="Boundary Probing",
+            risk_weight=0.35,
+            description="Agent is probing the boundaries of its permissions by intentionally triggering guardrail blocks."
         ),
-        Alert(
-            id=aid(), agent_id="agent_marko_s", technique="Privilege Escalation", severity="HIGH",
-            risk_score=0.65,
-            summary="Agent 'Marko Stankovic' demonstrates a HIGH-severity credential harvesting pattern across 5 sessions.",
-            evidence={"sessions": 5, "escalation_steps": 3, "max_level_reached": 6},
-            created_at=now - timedelta(hours=2, minutes=30),
-            status="open",
+        Technique(
+            id="tech_privilege",
+            name="Privilege Escalation",
+            risk_weight=0.25,
+            description="Agent is attempting to execute actions requiring higher privileges than it possesses."
         ),
-        Alert(
-            id=aid(), agent_id="agent_dan_r", technique="Systematic Enumeration", severity="MEDIUM",
-            risk_score=0.45,
-            summary="Agent 'Daniel Reyes' is systematically enumerating all accessible API tool endpoints.",
-            evidence={"sessions": 4, "unique_targets_enumerated": 15, "sequentiality_score": 0.84},
-            created_at=now - timedelta(hours=3, minutes=45),
-            status="open",
-        ),
-        Alert(
-            id=aid(), agent_id="agent_nina_p", technique="Privilege Escalation", severity="CRITICAL",
-            risk_score=0.95,
-            summary="Agent 'Nina Pavlova' is attempting privilege escalation by repeatedly invoking admin_api endpoints.",
-            evidence={"sessions": 3, "escalation_steps": 2, "max_level_reached": 8},
-            created_at=now - timedelta(hours=0, minutes=45),
-            status="open",
-        ),
+        Technique(
+            id="tech_enum",
+            name="Systematic Enumeration",
+            risk_weight=0.25,
+            description="Agent is systematically enumerating endpoints, parameters, or internal tools."
+        )
     ]
 
 
@@ -277,6 +262,12 @@ async def seed():
         await db.execute(delete(Event))
         await db.execute(delete(Session))
         await db.execute(delete(Agent))
+        await db.execute(delete(Technique))
+        await db.commit()
+
+        print("  Inserting techniques...")
+        for t in build_techniques():
+            db.add(t)
         await db.commit()
 
         print("  Inserting 8 named agent identities...")
@@ -307,20 +298,16 @@ async def seed():
                 db.add(evt)
         await db.commit()
 
-        print("  Inserting 4 detected alerts...")
-        for a in build_alerts():
-            db.add(a)
-        await db.commit()
-
     total = len(normal) + len(adversarial)
     total_events = sum(len(e) for _, e in normal + adversarial)
     print()
     print("=" * 45)
     print("Seed complete!")
+    print(f"  Techniques: 3")
     print(f"  Agents:   {len(AGENTS)}")
     print(f"  Sessions: {total}  (42 normal + 18 adversarial)")
     print(f"  Events:   {total_events}")
-    print(f"  Alerts:   4")
+    print(f"  Alerts:   0")
     print()
 
 

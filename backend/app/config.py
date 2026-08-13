@@ -26,7 +26,7 @@ class Settings(BaseSettings):
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
         )
         if self.postgres_sslmode:
-            url += f"?sslmode={self.postgres_sslmode}"
+            url += f"?ssl={self.postgres_sslmode}"
         return url
 
     class Config:

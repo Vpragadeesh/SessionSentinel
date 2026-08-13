@@ -75,6 +75,15 @@ class Pattern(Base):
     cluster_id = Column(Integer, nullable=True)
 
 
+class Technique(Base):
+    __tablename__ = "techniques"
+
+    id = Column(String, primary_key=True, default=lambda: f"tech_{uuid.uuid4().hex[:8]}")
+    name = Column(String(100), unique=True, nullable=False)
+    risk_weight = Column(Float, nullable=False)
+    description = Column(Text, nullable=True)
+
+
 class Alert(Base):
     __tablename__ = "alerts"
 

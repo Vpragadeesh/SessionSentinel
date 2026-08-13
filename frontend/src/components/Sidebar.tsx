@@ -13,10 +13,11 @@ import {
   CheckSquare
 } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
-import type { Pattern } from '../api/client';
+import type { Pattern, Alert } from '../api/client';
 
 interface SidebarProps {
   patterns: Pattern[];
+  alerts?: Alert[];
 }
 
 const NavItem: React.FC<{
@@ -49,8 +50,9 @@ const NavItem: React.FC<{
   </NavLink>
 );
 
-export const Sidebar: React.FC<SidebarProps> = ({ patterns }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ patterns, alerts = [] }) => {
   const hasThreat = patterns.length > 0;
+  const openAlertsCount = alerts.filter(a => a.status !== 'resolved').length;
 
   return (
     <aside className="sidebar">
@@ -76,13 +78,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ patterns }) => {
           to="/threats"
           icon={<Crosshair size={16} />}
           label="Threats"
+          badge={patterns.length}
         />
 
         <NavItem
           to="/alerts"
           icon={<AlertTriangle size={16} />}
           label="Alerts"
-          badge={patterns.length} 
+          badge={openAlertsCount} 
         />
 
         <NavItem
